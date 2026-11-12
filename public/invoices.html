@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>All invoices | Martha's Cuisines</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="plain">
+  <nav class="topnav">
+    <a href="/">New invoice</a>
+    <a href="/invoices.html" class="current">All invoices</a>
+    <button type="button" id="logout" class="link">Log out</button>
+  </nav>
+  <main class="list-page">
+    <h1>All invoices</h1>
+    <label class="search">Search by client or invoice number
+      <input id="q" type="search" placeholder="Ama or MC-0004">
+    </label>
+    <p id="msg" class="notices" role="status"></p>
+    <ul id="list" class="inv-list"></ul>
+  </main>
+  <script type="module" src="/js/invoices.js"></script>
+</body>
+</html>
