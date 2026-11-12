@@ -1,0 +1,6 @@
+/* Brand colours. Client rule: orange, black and white are the main colours. */
+:root {
+  --orange: /* TODO: sample the exact hex from public/assets/logo.jpeg */ #B83A00;
+  --black: #000000;
+  --white: #ffffff;
+}
