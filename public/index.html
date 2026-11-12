@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Martha's Cuisines Invoice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/" class="current">New invoice</a>
+    <a href="/invoices.html">All invoices</a>
+    <button type="button" id="logout" class="link">Log out</button>
+  </nav>
+  <main class="app">
+    <form id="builder" class="builder" autocomplete="off">
+      <h1 id="form-title">New invoice</h1>
+
+      <fieldset>
+        <legend>Client and event</legend>
+        <label>Client name <input name="clientName" required></label>
+        <label>Client phone <input name="clientPhone" inputmode="tel"></label>
+        <label>Event date <input name="eventDate" type="date"></label>
+        <label>Venue <input name="venue"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Package</legend>
+        <label>Package
+          <select name="packageId">
+            <option value="bronze">Bronze, GHS 80 per head</option>
+            <option value="silver">Silver, GHS 100 per head</option>
+            <option value="gold" selected>Gold, GHS 120 per head</option>
+          </select>
+        </label>
+        <label>Number of guests <input name="guests" type="number" min="1" step="1" value="150" inputmode="numeric"></label>
+      </fieldset>
+
+      <fieldset id="dishes">
+        <legend>Dishes</legend>
+        <!-- filled by app.js from src/menu.js -->
+      </fieldset>
+
+      <fieldset>
+        <legend>Extras</legend>
+        <div id="extras"></div>
+        <button type="button" id="add-extra" class="secondary">Add extra</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Payment</legend>
+        <label>Discount (GHS) <input name="discount" inputmode="decimal" placeholder="0"></label>
+        <label>Deposit paid (GHS) <input name="deposit" inputmode="decimal" placeholder="0"></label>
+        <label>Invoice date <input name="invoiceDate" type="date"></label>
+        <label>Notes for the client <textarea name="notes" rows="3" maxlength="1000"></textarea></label>
+      </fieldset>
+    </form>
+
+    <section class="preview" aria-label="Invoice preview">
+      <article id="invoice" class="invoice"></article>
+    </section>
+  </main>
+
+  <div class="bar">
+    <p id="notices" class="notices" role="status"></p>
+    <div class="bar-row">
+      <div>
+        <span class="bar-label">Balance due</span>
+        <strong id="bar-balance"></strong>
+      </div>
+      <div class="bar-actions">
+        <button type="button" id="save">Save invoice</button>
+        <button type="button" id="print" class="secondary">Download PDF</button>
+        <button type="button" id="whatsapp" class="secondary" disabled title="Save the invoice first">Send on WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
