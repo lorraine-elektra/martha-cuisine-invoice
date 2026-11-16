@@ -19,7 +19,6 @@ const invoiceEl = document.querySelector("#invoice");
 const notices = document.querySelector("#notices");
 const barBalance = document.querySelector("#bar-balance");
 const linesEl = document.querySelector("#lines");
-const itemsEmpty = document.querySelector("#items-empty");
 const saveBtn = document.querySelector("#save");
 const printBtn = document.querySelector("#print");
 const addBtn = document.querySelector("#add-line");
@@ -97,11 +96,15 @@ function field(labelText, input, extraClass = "") {
     el("p", { class: "field-error", id: "err-" + input.id }));
 }
 
+// A phone's pick-list is as wide as its longest entry, so long names are shortened in the list only.
+// The full name is still what gets added to the invoice.
+const shortLabel = (name) => (name.length > 28 ? name.slice(0, 27).trimEnd() + "…" : name);
+
 const draft = {
   select: el("select", { id: "draft-item", class: "line-select" },
     el("option", { value: "", text: "Choose an item..." }),
     ...itemGroups.map(([label, names]) =>
-      el("optgroup", { label }, ...names.map((n) => el("option", { value: n, text: n })))),
+      el("optgroup", { label }, ...names.map((n) => el("option", { value: n, text: shortLabel(n), title: n })))),
     el("option", { value: OTHER, text: "Other (type my own)" })),
   other: el("input", { id: "draft-other", maxlength: "200", enterkeyhint: "next" }),
   qty: el("input", { id: "draft-qty", inputmode: "numeric", maxlength: "7", enterkeyhint: "next" }),
@@ -109,10 +112,75 @@ const draft = {
 };
 draft.qty.dataset.kind = "whole";
 draft.price.dataset.kind = "money";
+
+// The browser's own pick-list can grow taller than the screen, so the list is drawn by hand with a capped height.
+// The real <select> stays as the value holder (visually hidden); this just sits on top of it.
+function itemPicker(select) {
+  const proto = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+  const label = el("span", { class: "picker-label" });
+  const btn = el("button", { type: "button", class: "picker-btn", "aria-haspopup": "listbox", "aria-expanded": "false" },
+    label, el("span", { class: "picker-caret", "aria-hidden": "true", text: "▾" }));
+  const pop = el("div", { class: "picker-pop", role: "listbox", hidden: true, tabindex: "-1" });
+  const wrap = el("div", { class: "picker" }, btn, pop);
+  const opts = [...select.querySelectorAll("option")];
+  const optEls = new Map();
+  let group = null;
+  for (const o of opts) {
+    const g = o.parentElement.tagName === "OPTGROUP" ? o.parentElement.label : null;
+    if (g !== group && g) pop.append(el("div", { class: "picker-group", role: "presentation", text: g }));
+    group = g;
+    const li = el("div", { class: "picker-opt", role: "option", tabindex: "-1", "data-value": o.value, title: o.title || "", text: o.textContent });
+    optEls.set(o.value, li); pop.append(li);
+  }
+  const sync = () => {
+    const cur = opts.find((o) => o.value === select.value) ?? opts[0];
+    label.textContent = cur.value === "" ? "Choose an item..." : (cur.title || cur.textContent);
+    label.classList.toggle("is-placeholder", cur.value === "");
+    optEls.forEach((li, v) => li.setAttribute("aria-selected", String(v === select.value)));
+  };
+  Object.defineProperty(select, "value", { get() { return proto.get.call(this); }, set(v) { proto.set.call(this, v); sync(); } });
+  select.classList.add("picker-native");
+  select.tabIndex = -1;
+  select.setAttribute("aria-hidden", "true");
+  select.focus = () => btn.focus();
+  select.addEventListener("focus", () => btn.focus());
+  const close = (refocus = true) => { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); if (refocus) btn.focus(); };
+  const open = () => {
+    pop.hidden = false; btn.setAttribute("aria-expanded", "true");
+    const r = btn.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
+    const up = below < 220 && above > below;
+    pop.classList.toggle("up", up);
+    pop.style.maxHeight = Math.max(140, Math.min(320, up ? above : below)) + "px";
+    (optEls.get(select.value) ?? pop.querySelector(".picker-opt")).focus();
+    (optEls.get(select.value) ?? pop).scrollIntoView?.({ block: "nearest" });
+  };
+  const choose = (v) => { select.value = v; close(); select.dispatchEvent(new Event("change", { bubbles: true })); };
+  btn.addEventListener("click", () => (pop.hidden ? open() : close()));
+  btn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); open(); } });
+  pop.addEventListener("click", (e) => { const li = e.target.closest(".picker-opt"); if (li) choose(li.dataset.value); });
+  pop.addEventListener("keydown", (e) => {
+    const list = [...pop.querySelectorAll(".picker-opt")], i = list.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); list[Math.min(i + 1, list.length - 1)].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); list[Math.max(i - 1, 0)].focus(); }
+    else if (e.key === "Home") { e.preventDefault(); list[0].focus(); }
+    else if (e.key === "End") { e.preventDefault(); list.at(-1).focus(); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); if (i >= 0) choose(list[i].dataset.value); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+    else if (e.key === "Tab") close(false);
+  });
+  document.addEventListener("pointerdown", (e) => { if (!pop.hidden && !wrap.contains(e.target)) close(false); });
+  sync();
+  select.after(wrap);
+  return wrap;
+}
+
 const otherField = field("Item name", draft.other, "draft-other");
 otherField.hidden = true;
+const itemField = field("Package or item", draft.select, "draft-desc");
+itemPicker(draft.select);
 draftEl.append(
-  field("Package or item", draft.select, "draft-desc"),
+  itemField,
   otherField,
   field("Quantity", draft.qty, "draft-qty"),
   field("Price for one (GHS)", draft.price, "draft-price"));
@@ -205,7 +273,6 @@ addBtn.addEventListener("click", addItem);
 
 // ---------- the list of added items ----------
 function renderItems() {
-  itemsEmpty.hidden = items.length > 0;
   linesEl.hidden = items.length === 0;
   linesEl.replaceChildren(...items.map((it, i) => {
     const qty = el("input", { id: `item-${i}-qty`, inputmode: "numeric", maxlength: "7", value: String(it.quantity),

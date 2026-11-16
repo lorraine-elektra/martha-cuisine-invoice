@@ -24,9 +24,22 @@
       <h1>All invoices</h1>
       <p id="count" class="list-count" aria-live="polite"></p>
     </div>
-    <div class="field">
-      <label for="q">Search by client or invoice number</label>
-      <input id="q" type="search" autocomplete="off">
+    <div class="list-filters">
+      <div class="field">
+        <label for="q">Search by client or invoice number</label>
+        <input id="q" type="search" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="show">Show</label>
+        <select id="show">
+          <option value="all">All invoices</option>
+          <option value="unpaid">Unpaid</option>
+          <option value="paid">Paid</option>
+          <option value="cash">Paid by cash</option>
+          <option value="momo">Paid by MoMo</option>
+          <option value="bank">Paid by bank</option>
+        </select>
+      </div>
     </div>
     <p id="msg" class="notices" role="alert"></p>
     <ul id="list" class="inv-list"></ul>

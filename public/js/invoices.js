@@ -6,6 +6,7 @@ const list = document.querySelector("#list");
 const msg = document.querySelector("#msg");
 const count = document.querySelector("#count");
 const search = document.querySelector("#q");
+const show = document.querySelector("#show");
 wireLogout();
 
 const niceDate = (iso) =>
@@ -56,11 +57,28 @@ async function load({ quiet = false } = {}) {
     return;
   }
   if (mine !== latest) return;
+  fetched = invoices;
+  render();
+}
+
+// Which invoices the "Show" dropdown lets through.
+const matches = (inv, want) =>
+  want === "all" ? true
+    : want === "unpaid" ? inv.status !== "paid"
+    : want === "paid" ? inv.status === "paid"
+    : inv.status === "paid" && inv.paymentMethod === want;
+
+let fetched = [];
+function render() {
+  const want = show.value;
+  const invoices = fetched.filter((inv) => matches(inv, want));
   const searching = search.value.trim() !== "";
-  count.textContent = `${invoices.length} ${invoices.length === 1 ? "invoice" : "invoices"}${searching ? " found" : ""}`;
+  const narrowed = searching || want !== "all";
+  count.textContent = `${invoices.length} ${invoices.length === 1 ? "invoice" : "invoices"}${narrowed ? " found" : ""}`;
   if (!invoices.length) {
     list.replaceChildren(el("li", { class: "empty" },
-      searching ? "No invoices match your search. Check the spelling or try the invoice number."
+      want !== "all" && fetched.length ? "No invoices to show here. Choose All invoices to see the rest."
+        : searching ? "No invoices match your search. Check the spelling or try the invoice number."
         : el("span", {}, "There are no invoices yet. ", el("a", { href: "/", text: "Create the first one." }))));
     return;
   }
@@ -97,11 +115,12 @@ async function load({ quiet = false } = {}) {
       el("div", { class: "inv-side" },
         el("span", { class: "balance-cell" }, el("span", { class: "small", text: "Balance due" }),
           el("strong", { text: formatGHS(Math.max(0, inv.balance)) })),
-        el("span", { class: paid ? "status paid" : "status", text: paid ? (METHODS[inv.paymentMethod] ? `Paid · ${METHODS[inv.paymentMethod]}` : "Paid") : "Unpaid" }),
+        el("span", { class: paid ? "status paid" : "status", text: paid ? (METHODS[inv.paymentMethod] ? `Paid by ${METHODS[inv.paymentMethod]}` : "Paid") : "Unpaid" }),
         toggle));
   }));
 }
 
 let timer;
 search.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(load, 250); });
+show.addEventListener("change", render);
 load();
