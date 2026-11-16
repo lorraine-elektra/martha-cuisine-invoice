@@ -328,6 +328,15 @@ whatsappBtn.addEventListener("click", () => {
   window.open(url, "_blank", "noopener");
 });
 
+// Phone layout: one pane at a time. Edit the invoice, or look at the finished page.
+const appEl = document.querySelector(".app");
+const viewButtons = document.querySelectorAll(".view-switch button");
+viewButtons.forEach((btn) => btn.addEventListener("click", () => {
+  appEl.dataset.view = btn.dataset.view;
+  viewButtons.forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+  window.scrollTo(0, 0);
+}));
+
 // Warn before leaving the page with changes that have not been saved.
 let dirty = false;
 window.addEventListener("beforeunload", (e) => { if (dirty) e.preventDefault(); });

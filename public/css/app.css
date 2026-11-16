@@ -1,12 +1,5 @@
 * { box-sizing: border-box; }
 
-:root {
-  --serif: "Libre Caslon Text", Georgia, serif;
-  --sans: "Source Sans 3", system-ui, sans-serif;
-  --alert: #b00020; /* only for errors and warnings */
-  --ok: #1b6e3c;    /* only for "paid" status later */
-}
-
 body {
   margin: 0;
   font-family: var(--sans);
@@ -37,10 +30,10 @@ input, select, textarea {
   padding: 0.5rem 0.75rem; font: inherit; font-weight: 400;
   border: 1.5px solid var(--black); border-radius: 4px; background: var(--white); color: var(--black);
 }
-input:focus-visible, select:focus-visible, button:focus-visible {
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
   outline: 3px solid var(--orange); outline-offset: 2px;
 }
-input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--alert); }
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--alert); }
 
 .dish-group { margin-bottom: 0.75rem; }
 .dish-group h3 { font-size: 0.95rem; margin: 0.5rem 0 0.25rem; }
@@ -68,6 +61,10 @@ button {
   border-radius: 4px; cursor: pointer;
 }
 button.secondary { background: var(--white); color: var(--orange); }
+button:hover:not(:disabled):not(.is-off) { background: var(--orange-dark); border-color: var(--orange-dark); }
+button.secondary:hover:not(:disabled):not(.is-off) { background: var(--white); color: var(--orange-dark); }
+button.link:hover { background: none; color: var(--orange); }
+button:active:not(:disabled) { transform: translateY(1px); }
 .line-row button { padding: 0 0.9rem; }
 button.is-off { opacity: 0.6; border-style: dashed; } /* looks unavailable, but stays tappable to explain why */
 .login-title { font-size: 1.5rem; margin: 0 0 1.25rem; }
@@ -93,7 +90,8 @@ button.is-off { opacity: 0.6; border-style: dashed; } /* looks unavailable, but 
 @media (min-width: 40rem) { .invoice { padding: 2.5rem; } }
 
 .inv-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1.5rem; align-items: flex-start; }
-.inv-logo { width: 11rem; height: auto; display: block; } /* width only, so the logo is never stretched */
+/* width only, so the logo is never stretched. multiply hides the JPEG's off-white background */
+.inv-logo { width: 11rem; height: auto; display: block; mix-blend-mode: multiply; }
 .inv-meta { text-align: right; }
 .inv-meta h2 { margin: 0; font-size: 2rem; color: var(--orange); letter-spacing: 0.02em; }
 .inv-meta p { margin: 0.1rem 0; }
@@ -169,11 +167,32 @@ button:disabled { opacity: 0.6; cursor: progress; }
   background: var(--black); color: var(--white); padding: 0.6rem 1.25rem; border-radius: 4px; margin: 0; z-index: 10;
 }
 
+/* ---------- phones ---------- */
+.view-switch { display: grid; grid-template-columns: 1fr 1fr; position: sticky; top: 0; z-index: 5; background: var(--white); border-bottom: 1.5px solid var(--black); }
+.view-switch button { border: 0; border-radius: 0; background: var(--white); color: var(--black); min-height: 3rem; }
+.view-switch button[aria-pressed="true"] { color: var(--orange); box-shadow: inset 0 -3px 0 var(--orange); }
+@media (max-width: 63.99rem) {
+  .app[data-view="edit"] .preview, .app[data-view="preview"] .builder { display: none; }
+  body { padding-bottom: calc(8.5rem + env(safe-area-inset-bottom)); }
+  .topnav a, button.link { padding: 0.75rem 0; }
+  .dish { min-height: 2.75rem; }
+  .bar { padding: 0.5rem 1rem calc(0.5rem + env(safe-area-inset-bottom)); }
+  .notices { max-height: 3.5rem; overflow-y: auto; margin-bottom: 0.25rem; }
+  .bar-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; align-items: center; }
+  .bar-actions { display: contents; }
+  .bar-label { font-size: 0.8rem; }
+  #bar-balance { font-size: 1.25rem; white-space: nowrap; }
+  .bar-actions button { padding: 0.25rem 0.5rem; font-size: 0.9rem; line-height: 1.2; min-height: 2.75rem; }
+  #save { font-size: 1rem; }
+}
+@media (min-width: 64rem) { .view-switch { display: none; } }
+
 /* ---------- print: only the invoice, on A4 ---------- */
 @page { size: A4; margin: 12mm; }
 @media print {
   body { padding: 0; }
-  .builder, .bar, .topnav, .flash { display: none !important; }
+  .builder, .bar, .topnav, .flash, .view-switch { display: none !important; }
+  .app .preview { display: block !important; }
   .app { display: block; padding: 0; }
   .invoice { border: 0; padding: 0; max-width: none; }
   tr, .pay, .balance, .signatures { break-inside: avoid; }

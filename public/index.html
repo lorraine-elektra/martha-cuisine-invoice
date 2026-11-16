@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#B83A00">
   <title>Martha's Cuisines Invoice</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +17,11 @@
     <a href="/invoices.html">All invoices</a>
     <button type="button" id="logout" class="link">Log out</button>
   </nav>
-  <main class="app">
+  <div class="view-switch" role="group" aria-label="Choose what to show">
+    <button type="button" data-view="edit" aria-pressed="true">Edit</button>
+    <button type="button" data-view="preview" aria-pressed="false">Preview invoice</button>
+  </div>
+  <main class="app" data-view="edit">
     <form id="builder" class="builder" autocomplete="off">
       <h1 id="form-title">New invoice</h1>
 

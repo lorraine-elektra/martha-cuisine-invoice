@@ -1,6 +1,22 @@
-/* Brand colours. Client rule: orange, black and white are the main colours. */
+/* Design tokens. Client rule: orange, black and white are the main colours. */
 :root {
-  --orange: /* TODO: sample the exact hex from public/assets/logo.jpeg */ #B83A00;
+  /* Brand. Orange sampled from public/assets/logo.jpeg (about #BC3C04); this
+     slightly deeper shade keeps white text on it above 4.5:1 contrast. */
+  --orange: #b83a00;
+  --orange-dark: #8f2d00; /* hover / pressed */
   --black: #000000;
   --white: #ffffff;
+
+  /* Status colours: used sparingly. */
+  --alert: #b00020; /* errors and warnings only */
+  --ok: #1b6e3c;    /* "paid" status only */
+
+  /* Type */
+  --serif: "Libre Caslon Text", Georgia, serif;
+  --sans: "Source Sans 3", system-ui, sans-serif;
+
+  /* Shape */
+  --radius: 4px;
+  --rule: 1.5px;        /* standard black rule */
+  --rule-accent: 2px;   /* orange section rule */
 }
