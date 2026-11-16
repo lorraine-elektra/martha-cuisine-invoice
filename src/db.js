@@ -35,6 +35,7 @@ export function openDb(file = "invoices.db") {
   add("discount_type", "TEXT NOT NULL DEFAULT 'amount'");
   add("discount_value", "INTEGER NOT NULL DEFAULT 0");
   add("subtotal", "INTEGER NOT NULL DEFAULT 0");
+  add("payment_method", "TEXT NOT NULL DEFAULT ''");
   return db;
 }
 
@@ -65,7 +66,7 @@ const toInvoice = (r) => {
     subtotal: lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0),
     discount: r.discount, deposit: r.deposit,
     total: r.total, balance: r.balance,
-    notes: r.notes, createdAt: r.created_at, paidAt: r.paid_at,
+    notes: r.notes, createdAt: r.created_at, paidAt: r.paid_at, paymentMethod: r.payment_method ?? "",
   };
 };
 
@@ -113,8 +114,8 @@ export function listInvoices(db, q = "") {
     ORDER BY id DESC LIMIT 200`).all(like, like).map(toInvoice);
 }
 
-export function setPaid(db, id, paid) {
-  const info = db.prepare("UPDATE invoices SET status=?, paid_at=? WHERE id=?")
-    .run(paid ? "paid" : "unpaid", paid ? new Date().toISOString() : null, id);
+export function setPaid(db, id, paid, method = "") {
+  const info = db.prepare("UPDATE invoices SET status=?, paid_at=?, payment_method=? WHERE id=?")
+    .run(paid ? "paid" : "unpaid", paid ? new Date().toISOString() : null, paid ? method : "", id);
   return info.changes ? getInvoice(db, id) : null;
 }

@@ -22,7 +22,7 @@ Open http://localhost:3000 and log in.
 npm test
 ```
 
-runs all tests (25). `npm run backup` saves a safe copy of the database into `backups/`.
+runs all tests (26). `npm run backup` saves a safe copy of the database into `backups/`.
 
 ## How it fits together
 

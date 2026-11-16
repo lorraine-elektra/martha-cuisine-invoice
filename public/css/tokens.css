@@ -11,12 +11,32 @@
   --alert: #b00020; /* errors and warnings only */
   --ok: #1b6e3c;    /* "paid" status only */
 
+  /* Derived from the colours above (black or orange mixed with white, or alert mixed with white).
+     No new hues: only for borders, muted text, disabled states and soft highlights. */
+  --field-border: #8c8c8c;  /* 45% black on white: input borders (3.3:1, so a box is clearly visible) */
+  --line: #c7c7c7;          /* 22% black on white: card borders */
+  --line-soft: #e6e6e6;     /* 10% black on white: dividers */
+  --muted: #525252;         /* 68% black on white: secondary text (7.9:1 contrast) */
+  --disabled-bg: #ebebeb;   /* 8% black on white */
+  --disabled-text: #8c8c8c; /* 45% black on white */
+  --orange-soft: #f9efeb;   /* 8% orange on white: selected or hovered rows */
+  --alert-soft: #f9ebed;    /* 8% alert on white: error message background */
+
   /* Type */
   --serif: "Libre Caslon Text", Georgia, serif;
   --sans: "Source Sans 3", system-ui, sans-serif;
 
   /* Shape */
-  --radius: 4px;
+  --radius: 6px;
   --rule: 1.5px;        /* standard black rule */
   --rule-accent: 2px;   /* orange section rule */
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 6px 20px rgb(0 0 0 / 0.10); /* toasts, dialogs, invoice sheet */
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
 }

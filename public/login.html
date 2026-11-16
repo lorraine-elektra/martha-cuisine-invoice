@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#B83A00">
   <title>Log in | Martha's Cuisines</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,9 +15,12 @@
   <main class="login">
     <img class="inv-logo" src="/assets/logo.jpeg" alt="Martha's Cuisines">
     <h1 class="login-title">Invoices</h1>
-    <form id="login-form">
-      <label>Password <input type="password" name="password" autocomplete="current-password" required autofocus></label>
-      <p id="error" class="notices" role="alert"></p>
+    <form id="login-form" novalidate>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" autocomplete="current-password" aria-describedby="err-password" autofocus>
+        <p id="err-password" class="field-error" role="alert"></p>
+      </div>
       <button type="submit">Log in</button>
     </form>
   </main>

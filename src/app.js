@@ -51,7 +51,12 @@ export function createApp({ db, password, secret, trustProxy = false }) {
     inv ? res.json(inv) : res.status(404).json({ error: "Invoice not found" });
   });
   api.post("/invoices/:id/paid", (req, res) => {
-    const inv = idOf(req) && setPaid(db, idOf(req), req.body?.paid !== false);
+    const paid = req.body?.paid !== false;
+    const method = req.body?.method;
+    if (paid && !["cash", "momo", "bank"].includes(method)) {
+      return res.status(400).json({ error: "Choose how it was paid: cash, MoMo or bank" });
+    }
+    const inv = idOf(req) && setPaid(db, idOf(req), paid, paid ? method : "");
     inv ? res.json(inv) : res.status(404).json({ error: "Invoice not found" });
   });
   app.use("/api", api);

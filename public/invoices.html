@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#B83A00">
   <title>All invoices | Martha's Cuisines</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,19 +12,41 @@
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body class="plain">
-  <nav class="topnav">
+  <a class="skip-link" href="#q">Skip to search</a>
+  <nav class="topnav" aria-label="Main">
+    <span class="brand">Martha's Cuisines</span>
     <a href="/">New invoice</a>
     <a href="/invoices.html" class="current" aria-current="page">All invoices</a>
     <button type="button" id="logout" class="link">Log out</button>
   </nav>
   <main class="list-page">
-    <h1>All invoices</h1>
-    <label class="search">Search by client or invoice number
-      <input id="q" type="search">
-    </label>
-    <p id="msg" class="notices" role="status"></p>
+    <div class="list-head">
+      <h1>All invoices</h1>
+      <p id="count" class="list-count" aria-live="polite"></p>
+    </div>
+    <div class="field">
+      <label for="q">Search by client or invoice number</label>
+      <input id="q" type="search" autocomplete="off">
+    </div>
+    <p id="msg" class="notices" role="alert"></p>
     <ul id="list" class="inv-list"></ul>
   </main>
+  <dialog id="pay-dialog" class="pay-dialog" aria-labelledby="pay-title">
+    <form method="dialog" id="pay-form">
+      <h2 id="pay-title">How was it paid?</h2>
+      <p id="pay-for" class="small"></p>
+      <fieldset class="pay-methods">
+        <legend class="sr-only">Payment method</legend>
+        <label><input type="radio" name="method" value="cash" required> Cash</label>
+        <label><input type="radio" name="method" value="momo"> Mobile money (MoMo)</label>
+        <label><input type="radio" name="method" value="bank"> Bank transfer</label>
+      </fieldset>
+      <div class="pay-actions">
+        <button type="button" class="secondary" id="pay-cancel">Cancel</button>
+        <button type="submit">Mark paid</button>
+      </div>
+    </form>
+  </dialog>
   <script type="module" src="/js/invoices.js"></script>
 </body>
 </html>

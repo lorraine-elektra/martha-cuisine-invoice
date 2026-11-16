@@ -65,5 +65,8 @@ export function checkInvoiceInput(input) {
   } catch (err) {
     throw new ValidationError(err.message);
   }
+  // Quantity x price can pass JavaScript's exact-integer limit (about 9 quadrillion pesewas) and
+  // silently lose pesewas, so the invoice total is capped at the same GHS 100 million as a single amount.
+  if (totals.subtotal > MAX_MONEY) throw new ValidationError("The invoice total is too large (the limit is GHS 100,000,000)");
   return { values, totals };
 }

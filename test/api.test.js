@@ -78,8 +78,13 @@ test("update recalculates, search finds it, mark paid works", async () => {
   assert.equal(updated.total, 2450000);
   const found = await (await call("GET", "/api/invoices?q=Searchable")).json();
   assert.equal(found.length, 1);
-  const paid = await (await call("POST", `/api/invoices/${created.id}/paid`, { paid: true })).json();
+  const noMethod = await call("POST", `/api/invoices/${created.id}/paid`, { paid: true });
+  assert.equal(noMethod.status, 400);
+  const paid = await (await call("POST", `/api/invoices/${created.id}/paid`, { paid: true, method: "momo" })).json();
   assert.equal(paid.status, "paid");
+  assert.equal(paid.paymentMethod, "momo");
+  const unpaid = await (await call("POST", `/api/invoices/${created.id}/paid`, { paid: false })).json();
+  assert.equal(unpaid.paymentMethod, "");
 });
 
 test("percent discount is worked out by the server and stored", async () => {
@@ -98,4 +103,12 @@ test("unknown invoice is a 404 and server files stay private", async () => {
   assert.equal((await call("GET", "/api/invoices/9999")).status, 404);
   assert.equal((await call("GET", "/src/db.js")).status, 404);
   assert.equal((await call("GET", "/src/totals.js")).status, 200);
+});
+
+test("an invoice whose total passes GHS 100 million is refused instead of losing pesewas", async () => {
+  const huge = { description: "Too big", quantity: 1_000_000, unitPrice: 100_000_000_00 };
+  const res = await call("POST", "/api/invoices", sample({ lines: [huge] }));
+  assert.equal(res.status, 400);
+  const ok = await call("POST", "/api/invoices", sample({ lines: [{ description: "Big but fine", quantity: 1000, unitPrice: 100_000_00 }] }));
+  assert.equal(ok.status, 201);
 });

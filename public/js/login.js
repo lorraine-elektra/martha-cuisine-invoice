@@ -1,27 +1,31 @@
+import { setError, clearError, withLoading } from "/js/ui.js";
+
 const form = document.querySelector("#login-form");
-const error = document.querySelector("#error");
+const password = form.elements.password;
 const button = form.querySelector("button");
+
+password.addEventListener("input", () => clearError(password));
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  error.textContent = "";
-  button.disabled = true;
-  try {
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: form.elements.password.value }),
-    });
-    if (res.ok) {
-      location.href = "/invoices.html";
-      return;
+  clearError(password);
+  if (!password.value) { setError(password, "Enter your password."); password.focus(); return; }
+  await withLoading(button, "Logging in...", async () => {
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: password.value }),
+      });
+      if (res.ok) {
+        location.href = "/invoices.html";
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      setError(password, (data.error ?? "Could not log in") + ".");
+      password.select();
+    } catch {
+      setError(password, "Could not reach the server. Check your internet connection and try again.");
     }
-    const data = await res.json().catch(() => ({}));
-    error.textContent = (data.error ?? "Could not log in") + ".";
-    form.elements.password.select();
-  } catch {
-    error.textContent = "Could not reach the server. Check your internet connection and try again.";
-  } finally {
-    button.disabled = false;
-  }
+  });
 });
