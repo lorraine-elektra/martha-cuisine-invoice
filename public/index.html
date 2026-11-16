@@ -12,7 +12,7 @@
 </head>
 <body>
   <nav class="topnav">
-    <a href="/" class="current">New invoice</a>
+    <a href="/" class="current" aria-current="page">New invoice</a>
     <a href="/invoices.html">All invoices</a>
     <button type="button" id="logout" class="link">Log out</button>
   </nav>
@@ -22,7 +22,7 @@
 
       <fieldset>
         <legend>Client and event</legend>
-        <label>Client name <input name="clientName" required></label>
+        <label>Client name (required) <input name="clientName" required autocomplete="off"></label>
         <label>Client phone <input name="clientPhone" inputmode="tel"></label>
         <label>Event date <input name="eventDate" type="date"></label>
         <label>Venue <input name="venue"></label>
@@ -30,7 +30,6 @@
 
       <fieldset>
         <legend>Items</legend>
-        <p class="hint">Type the package or item, the quantity (for example guests) and the price for one.</p>
         <div id="lines"></div>
         <button type="button" id="add-line" class="secondary">Add item</button>
       </fieldset>
@@ -76,8 +75,8 @@
       </div>
       <div class="bar-actions">
         <button type="button" id="save">Save invoice</button>
-        <button type="button" id="print" class="secondary">Download PDF</button>
-        <button type="button" id="whatsapp" class="secondary" disabled title="Save the invoice first">Send on WhatsApp</button>
+        <button type="button" id="print" class="secondary" title="Opens the print window. Choose Save as PDF to download a copy.">Print or save as PDF</button>
+        <button type="button" id="whatsapp" class="secondary is-off" aria-disabled="true" title="Save the invoice first">Send on WhatsApp</button>
       </div>
     </div>
   </div>

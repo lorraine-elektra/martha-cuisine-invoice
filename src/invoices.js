@@ -36,7 +36,9 @@ export function checkInvoiceInput(input) {
     if (!description) throw new ValidationError(`Item ${i + 1} needs a description`);
     const quantity = whole(l?.quantity, `Item ${i + 1} quantity`, 1_000_000);
     if (quantity < 1) throw new ValidationError(`Item ${i + 1} quantity must be at least 1`);
-    return { description, quantity, unitPrice: whole(l?.unitPrice, `Item ${i + 1} price`, MAX_MONEY) };
+    const unitPrice = whole(l?.unitPrice, `Item ${i + 1} price`, MAX_MONEY);
+    if (unitPrice < 1) throw new ValidationError(`Item ${i + 1} needs a price`);
+    return { description, quantity, unitPrice };
   });
 
   const dishesIn = Array.isArray(input.dishes) ? input.dishes : [];

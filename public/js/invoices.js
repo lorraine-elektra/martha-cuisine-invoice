@@ -13,12 +13,12 @@ function el(tag, props = {}, ...children) {
     else if (k === "text") node.textContent = v;
     else node.setAttribute(k, v);
   }
-  node.append(...children);
+  node.append(...children.filter((c) => c !== null && c !== undefined));
   return node;
 }
 
 const niceDate = (iso) =>
-  iso ? new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "No event date";
+  new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 async function load() {
   msg.textContent = "";
@@ -26,27 +26,33 @@ async function load() {
   try {
     invoices = await api("/invoices?q=" + encodeURIComponent(search.value.trim()));
   } catch (err) {
-    msg.textContent = err.message;
+    msg.textContent = err.message + ".";
     return;
   }
   if (!invoices.length) {
-    list.replaceChildren(el("li", { class: "empty", text: search.value ? "No invoices match your search." : "No invoices yet. Create the first one with New invoice." }));
+    list.replaceChildren(el("li", { class: "empty", text: search.value.trim() ? "No invoices match your search." : "There are no invoices yet. Select New invoice to create the first one." }));
     return;
   }
   list.replaceChildren(...invoices.map((inv) => {
     const paid = inv.status === "paid";
-    const toggle = el("button", { type: "button", class: "secondary", text: paid ? "Mark unpaid" : "Mark paid" });
+    const toggle = el("button", {
+      type: "button", class: "secondary", text: paid ? "Mark unpaid" : "Mark paid",
+      "aria-label": `${paid ? "Mark unpaid" : "Mark paid"}: ${inv.number}, ${inv.clientName}`,
+    });
     toggle.addEventListener("click", async () => {
+      if (paid && !confirm(`Mark invoice ${inv.number} as unpaid?`)) return;
+      toggle.disabled = true;
       try { await api(`/invoices/${inv.id}/paid`, { method: "POST", body: { paid: !paid } }); load(); }
-      catch (err) { msg.textContent = err.message; }
+      catch (err) { msg.textContent = err.message + "."; toggle.disabled = false; }
     });
     return el("li", { class: "inv-item" },
       el("a", { class: "inv-main", href: "/?id=" + inv.id },
         el("strong", { text: inv.number }),
         el("span", { text: inv.clientName }),
-        el("span", { class: "small", text: niceDate(inv.eventDate) })),
+        inv.eventDate ? el("span", { class: "small", text: niceDate(inv.eventDate) }) : null),
       el("div", { class: "inv-side" },
-        el("strong", { text: formatGHS(inv.balance) }),
+        el("span", { class: "balance-cell" }, el("span", { class: "small", text: "Balance due" }),
+          el("strong", { text: formatGHS(inv.balance) })),
         el("span", { class: paid ? "status paid" : "status", text: paid ? "Paid" : "Unpaid" }),
         toggle));
   }));
