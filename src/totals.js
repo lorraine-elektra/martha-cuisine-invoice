@@ -1,5 +1,5 @@
 // Works out an invoice from lines the client types in. All money is whole pesewas.
-// Percentages are in basis points: 100 = 1%, 750 = 7.5%, 10000 = 100%.
+// A percentage discount is in basis points: 100 = 1%, 750 = 7.5%, 10000 = 100%.
 // Nothing is changed quietly: problems come back as warnings.
 
 function assertWhole(value, label, max = Number.MAX_SAFE_INTEGER) {
@@ -17,7 +17,6 @@ export function calculateTotals({
   lines = [],
   discountType = "amount", // "amount" (pesewas) or "percent" (basis points)
   discountValue = 0,
-  taxBp = 0,
   deposit = 0,
 }) {
   if (discountType !== "amount" && discountType !== "percent") {
@@ -25,7 +24,6 @@ export function calculateTotals({
   }
   assertWhole(discountValue, "Discount");
   assertWhole(deposit, "Deposit");
-  assertWhole(taxBp, "Tax", 10000);
   if (discountType === "percent") assertWhole(discountValue, "Discount", 10000);
 
   const priced = lines.map((line, i) => {
@@ -44,11 +42,9 @@ export function calculateTotals({
     discount = subtotal;
   }
 
-  const afterDiscount = subtotal - discount;
-  const tax = percentOf(afterDiscount, taxBp);
-  const total = afterDiscount + tax;
+  const total = subtotal - discount;
   const balance = total - deposit;
   if (deposit > total) warnings.push("Deposit is bigger than the total");
 
-  return { lines: priced, subtotal, discount, afterDiscount, tax, total, deposit, balance, warnings };
+  return { lines: priced, subtotal, discount, total, deposit, balance, warnings };
 }

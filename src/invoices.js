@@ -54,7 +54,6 @@ export function checkInvoiceInput(input) {
     lines,
     discountType,
     discountValue: whole(input.discountValue ?? 0, "Discount", discountType === "percent" ? 10000 : MAX_MONEY),
-    taxBp: whole(input.taxBp ?? 0, "Tax", 10000),
     deposit: whole(input.deposit ?? 0, "Deposit", MAX_MONEY),
   };
 

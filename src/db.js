@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 
-// Version 2 stores the items as typed in (lines), plus how the discount and tax were entered.
+// Version 2 stores the items as typed in (lines), plus how the discount was entered.
 // Invoices saved by version 1 (fixed packages) are kept and still open: see legacyLines().
 const OLD_RATES = { bronze: ["Bronze", 8000], silver: ["Silver", 10000], gold: ["Gold", 12000] };
 
@@ -34,8 +34,6 @@ export function openDb(file = "invoices.db") {
   add("lines", "TEXT NOT NULL DEFAULT '[]'");
   add("discount_type", "TEXT NOT NULL DEFAULT 'amount'");
   add("discount_value", "INTEGER NOT NULL DEFAULT 0");
-  add("tax_bp", "INTEGER NOT NULL DEFAULT 0");
-  add("tax_amount", "INTEGER NOT NULL DEFAULT 0");
   add("subtotal", "INTEGER NOT NULL DEFAULT 0");
   return db;
 }
@@ -63,9 +61,9 @@ const toInvoice = (r) => {
     clientName: r.client_name, clientPhone: r.client_phone,
     eventDate: r.event_date, venue: r.venue, invoiceDate: r.invoice_date,
     lines, dishes: JSON.parse(r.dishes),
-    discountType, discountValue, taxBp: r.tax_bp,
+    discountType, discountValue,
     subtotal: lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0),
-    discount: r.discount, tax: r.tax_amount, deposit: r.deposit,
+    discount: r.discount, deposit: r.deposit,
     total: r.total, balance: r.balance,
     notes: r.notes, createdAt: r.created_at, paidAt: r.paid_at,
   };
@@ -73,13 +71,13 @@ const toInvoice = (r) => {
 
 // Columns written on save. The old package_id and guests columns are kept only for old rows.
 const SAVE_COLUMNS = `client_name=?, client_phone=?, event_date=?, venue=?, invoice_date=?,
-  lines=?, dishes=?, discount_type=?, discount_value=?, tax_bp=?,
-  subtotal=?, discount=?, tax_amount=?, deposit=?, total=?, balance=?, notes=?`;
+  lines=?, dishes=?, discount_type=?, discount_value=?,
+  subtotal=?, discount=?, deposit=?, total=?, balance=?, notes=?`;
 
 const saveParams = (v, t) => [
   v.clientName, v.clientPhone, v.eventDate, v.venue, v.invoiceDate,
-  JSON.stringify(v.lines), JSON.stringify(v.dishes), v.discountType, v.discountValue, v.taxBp,
-  t.subtotal, t.discount, t.tax, v.deposit, t.total, t.balance, v.notes,
+  JSON.stringify(v.lines), JSON.stringify(v.dishes), v.discountType, v.discountValue,
+  t.subtotal, t.discount, v.deposit, t.total, t.balance, v.notes,
 ];
 
 export function createInvoice(db, v, t) {

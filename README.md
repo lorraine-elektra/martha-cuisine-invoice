@@ -1,6 +1,6 @@
 # Martha's Cuisines Invoice App
 
-A small web app for a Ghanaian catering business. The client types each item by hand (package or item name, quantity and price for one), plus any discount (GHS or %), tax (%) and deposit, and the app does the calculation. Save the invoice, find it again, mark it paid, print it as a PDF, and send a WhatsApp message to the client.
+A small web app for a Ghanaian catering business. The client types each item by hand (package or item name, quantity and price for one), plus any discount (GHS or %) and deposit, and the app does the calculation. Save the invoice, find it again, mark it paid, print it as a PDF, and send a WhatsApp message to the client.
 
 ## Run it
 
@@ -35,7 +35,7 @@ flowchart LR
   T -. same file also runs in the browser for live totals .-> B
 ```
 
-- **Order of calculation:** quantity x price for each item, added up to the subtotal. Then the discount comes off, then tax is charged on what is left, then the deposit comes off to give the balance due. Percentages are rounded to the nearest pesewa.
+- **Order of calculation:** quantity x price for each item, added up to the subtotal. Then the discount comes off, then the deposit comes off to give the balance due. A percentage discount is rounded to the nearest pesewa.
 - **Money is whole pesewas** (100 pesewas = 1 cedi), never decimals, so totals cannot drift.
 - **`src/totals.js` is the single source of truth.** The browser uses it for live totals. The server runs it again and stores its own answer, ignoring any total the browser sends.
 - **Invoice numbers** (MC-0001, MC-0002) are assigned by the server inside a database transaction.

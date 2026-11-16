@@ -39,8 +39,8 @@ test("invoices from the fixed-package version still open, and new ones can be sa
 
     const fresh = createInvoice(db,
       { clientName: "New", clientPhone: "", eventDate: "", venue: "", invoiceDate: "", notes: "", dishes: [],
-        lines: [{ description: "X", quantity: 2, unitPrice: 500 }], discountType: "amount", discountValue: 0, taxBp: 0, deposit: 0 },
-      { subtotal: 1000, discount: 0, tax: 0, total: 1000, balance: 1000 });
+        lines: [{ description: "X", quantity: 2, unitPrice: 500 }], discountType: "amount", discountValue: 0, deposit: 0 },
+      { subtotal: 1000, discount: 0, total: 1000, balance: 1000 });
     assert.equal(fresh.number, "MC-0002");
     db.close();
   } finally {

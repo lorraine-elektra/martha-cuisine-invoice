@@ -46,10 +46,13 @@ form.append(el("datalist", { id: "item-names" }, ...ITEM_SUGGESTIONS.map((n) => 
 
 function addLine(line = {}) {
   const row = el("div", { class: "line-row" },
-    el("input", { class: "line-desc", list: "item-names", placeholder: "Package or item", "aria-label": "Package or item", value: line.description ?? "" }),
-    el("input", { class: "line-qty", inputmode: "numeric", placeholder: "Qty", "aria-label": "Quantity", value: line.quantity ?? "" }),
-    el("input", { class: "line-price", inputmode: "decimal", placeholder: "Price (GHS)", "aria-label": "Price for one, in cedis",
-      value: line.unitPrice === undefined ? "" : (line.unitPrice / 100).toFixed(2) }),
+    el("label", { class: "line-field line-desc-field" }, "Package or item",
+      el("input", { class: "line-desc", list: "item-names", value: line.description ?? "" })),
+    el("label", { class: "line-field line-qty-field" }, "Quantity",
+      el("input", { class: "line-qty", inputmode: "numeric", value: line.quantity ?? "" })),
+    el("label", { class: "line-field line-price-field" }, "Price for one (GHS)",
+      el("input", { class: "line-price", inputmode: "decimal",
+        value: line.unitPrice === undefined ? "" : (line.unitPrice / 100).toFixed(2) })),
     el("button", { type: "button", class: "secondary", "aria-label": "Remove item", text: "x" }));
   row.querySelector("button").addEventListener("click", () => { row.remove(); update(); });
   linesEl.append(row);
@@ -97,10 +100,8 @@ function readForm() {
 
   const discountType = data.get("discountType");
   const discountValue = (discountType === "percent" ? readPercent : readMoney)(form.elements.discountValue);
-  const taxBp = readPercent(form.elements.tax);
   const deposit = readMoney(form.elements.deposit);
   if (discountValue === null) problems.push("Discount is not valid");
-  if (taxBp === null) problems.push("Tax must be a percentage from 0 to 100");
   if (deposit === null) problems.push("Deposit is not a valid amount");
 
   return {
@@ -115,7 +116,6 @@ function readForm() {
       dishes: data.getAll("dish"),
       lines, discountType,
       discountValue: discountValue ?? 0,
-      taxBp: taxBp ?? 0,
       deposit: deposit ?? 0,
     },
   };
@@ -144,7 +144,7 @@ function renderInvoice(v, t) {
   // pathLength 100 + dasharray leaves a small gap, so the ring stays "open" like the plate in the logo
   ring.innerHTML = '<ellipse cx="50" cy="50" rx="49" ry="49" pathLength="100" stroke-dasharray="92 8" transform="rotate(-60 50 50)"/>';
 
-  const showSubtotal = t.discount > 0 || t.tax > 0;
+  const showSubtotal = t.discount > 0;
   const discountLabel = v.discountType === "percent" ? `Discount (${formatPercent(v.discountValue)})` : "Discount";
 
   const table = el("table", {},
@@ -158,7 +158,6 @@ function renderInvoice(v, t) {
         el("td", { class: "num", text: formatGHS(l.amount) }))),
       showSubtotal ? sumRow("Subtotal", formatGHS(t.subtotal)) : null,
       t.discount ? sumRow(discountLabel, "- " + formatGHS(t.discount)) : null,
-      t.tax ? sumRow(`Tax (${formatPercent(v.taxBp)})`, formatGHS(t.tax)) : null,
       sumRow("Total", formatGHS(t.total)),
       t.deposit ? sumRow("Deposit paid", "- " + formatGHS(t.deposit)) : null));
 
@@ -255,7 +254,6 @@ function fillForm(inv) {
   f.discountType.value = inv.discountType;
   f.discountValue.value = !inv.discountValue ? ""
     : inv.discountType === "percent" ? plain(inv.discountValue / 100) : (inv.discountValue / 100).toFixed(2);
-  f.tax.value = inv.taxBp ? plain(inv.taxBp / 100) : "";
   f.deposit.value = inv.deposit ? (inv.deposit / 100).toFixed(2) : "";
   form.querySelectorAll('input[name="dish"]').forEach((box) => { box.checked = inv.dishes.includes(box.value); });
   linesEl.replaceChildren();

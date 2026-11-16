@@ -18,7 +18,7 @@ const SETUP = { description: "Set-up charge", quantity: 1, unitPrice: 50000 };
 const sample = (over = {}) => ({
   clientName: "Ama Mensah", clientPhone: "0240000000", eventDate: "2026-12-20", venue: "Madina",
   invoiceDate: "2026-11-12", lines: [GOLD, SETUP], dishes: ["Jollof rice"],
-  discountType: "amount", discountValue: 0, taxBp: 0, deposit: 0, notes: "", ...over,
+  discountType: "amount", discountValue: 0, deposit: 0, notes: "", ...over,
 });
 
 before(async () => {
@@ -63,7 +63,6 @@ test("bad input is rejected with a clear message", async () => {
     sample({ lines: [{ ...GOLD, unitPrice: "120" }] }),
     sample({ clientName: "" }),
     sample({ deposit: -5 }),
-    sample({ taxBp: 20000 }),
     sample({ discountType: "percent", discountValue: 20000 }),
   ]) {
     const res = await call("POST", "/api/invoices", bad);
@@ -83,15 +82,14 @@ test("update recalculates, search finds it, mark paid works", async () => {
   assert.equal(paid.status, "paid");
 });
 
-test("percent discount and tax are worked out by the server and stored", async () => {
+test("percent discount is worked out by the server and stored", async () => {
   const res = await call("POST", "/api/invoices", sample({
     lines: [{ description: "Item", quantity: 1, unitPrice: 100000 }],
-    discountType: "percent", discountValue: 1000, taxBp: 1250,
+    discountType: "percent", discountValue: 1000,
   }));
   const inv = await res.json();
   assert.equal(inv.discount, 10000);
-  assert.equal(inv.tax, 11250);
-  assert.equal(inv.total, 101250);
+  assert.equal(inv.total, 90000);
   assert.equal(inv.discountType, "percent");
   assert.equal(inv.lines[0].description, "Item");
 });

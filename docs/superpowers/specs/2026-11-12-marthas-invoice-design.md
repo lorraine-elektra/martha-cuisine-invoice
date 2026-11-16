@@ -15,7 +15,7 @@ The builder (the user) is a CS student aiming for AI engineering. The project do
 - Pricing (2026 rate card, `2026 MARTHA'S CUISINE MENU.pdf`): Bronze 80, Silver 100, Gold 120 cedis per head. Set up charge 500 GH. Minimum 150 guests. Packages can be adjusted to suit the customer. Menu also has starters (choose 1), desserts (choose 1), rice dishes, local dishes and extras.
 
 ## Change on 2026-11-16: manual items
-The client wants to type the package, quantity and price themselves, and have the app calculate from those plus discounts. So the invoice is a list of free-form items (name, quantity, price for one), not a fixed rate card. The app adds a discount (GHS or %), an optional tax (%) and a deposit. The rate card, set-up charge rule and 150-guest minimum are no longer built into the code. This also settles the tax question: there is an optional tax percentage, default 0. Old invoices stay readable.
+The client wants to type the package, quantity and price themselves, and have the app calculate from those plus discounts. So the invoice is a list of free-form items (name, quantity, price for one), not a fixed rate card. The app adds a discount (GHS or %) and a deposit. The rate card, set-up charge rule and 150-guest minimum are no longer built into the code. The client asked for no tax option, so the invoice has no tax line. Old invoices stay readable. Input boxes carry no placeholder text: they stay empty until the user types.
 
 ## Goals
 - Create an invoice from: client, event date and venue, package, guest count, chosen dishes, extras, adjustments.
@@ -73,6 +73,6 @@ Subject: a catering invoice for Ghanaian events, read mostly on a phone via What
 - Whether to use CSS print or a PDF library in stage 2.
 
 ## Open items (my default if no answer)
-- Tax lines (VAT, levies): default is none, with an optional "tax" field off by default. Ask the aunt or her accountant.
+- Tax lines (VAT, levies): not included, by the client's decision.
 - Payment terms (deposit percentage, due date): default is a free deposit field and due date on the invoice.
 - Business name spelling on the invoice: "Martha's Cuisines".

@@ -33,11 +33,10 @@ test("percent discount comes off the subtotal", () => {
   assert.equal(t.total, 1989000);
 });
 
-test("tax is charged on the amount after discount", () => {
+test("there is no tax: total is subtotal minus discount", () => {
   const t = calculateTotals({ lines: [{ description: "Item", quantity: 1, unitPrice: 100000 }], discountType: "percent", discountValue: 1000, taxBp: 1250 });
-  assert.equal(t.afterDiscount, 90000);
-  assert.equal(t.tax, 11250); // 12.5% of 900.00
-  assert.equal(t.total, 101250);
+  assert.equal(t.total, 90000);
+  assert.equal("tax" in t, false);
 });
 
 test("percentages round to the nearest pesewa", () => {
@@ -66,7 +65,6 @@ test("no minimum guest rule any more", () => {
 test("rejects decimals and negatives", () => {
   assert.throws(() => calculateTotals({ lines: [{ description: "x", quantity: 1.5, unitPrice: 100 }] }));
   assert.throws(() => calculateTotals({ lines: [{ description: "x", quantity: 1, unitPrice: -100 }] }));
-  assert.throws(() => calculateTotals({ lines: [setup], taxBp: 10001 }));
   assert.throws(() => calculateTotals({ lines: [setup], discountType: "percent", discountValue: 10001 }));
   assert.throws(() => calculateTotals({ lines: [setup], discountType: "bogus" }));
 });
