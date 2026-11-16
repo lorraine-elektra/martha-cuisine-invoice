@@ -42,12 +42,37 @@ for (const [title, key] of dishGroups) {
 }
 
 // ---------- item rows: description, quantity, price ----------
-form.append(el("datalist", { id: "item-names" }, ...ITEM_SUGGESTIONS.map((n) => el("option", { value: n }))));
+const OTHER = "__other__";
+const itemGroups = [
+  ["Packages and charges", ITEM_SUGGESTIONS.filter((n) => !MENU.extras.includes(n))],
+  ["Starters", MENU.starters], ["Rice dishes", MENU.rice], ["Local dishes", MENU.local],
+  ["Extras", MENU.extras], ["Desserts", MENU.desserts],
+];
+const allItemNames = itemGroups.flatMap(([, names]) => names);
+
+function itemSelect(current) {
+  const known = allItemNames.includes(current);
+  const select = el("select", { class: "line-select" },
+    el("option", { value: "", text: "Choose an item..." }),
+    ...itemGroups.map(([label, names]) =>
+      el("optgroup", { label }, ...names.map((n) => el("option", { value: n, text: n })))),
+    el("option", { value: OTHER, text: "Other (type my own)" }));
+  select.value = known ? current : current ? OTHER : "";
+  return select;
+}
 
 function addLine(line = {}) {
+  const description = line.description ?? "";
+  const select = itemSelect(description);
+  const descInput = el("input", { class: "line-desc", placeholder: "Type the item name", value: description });
+  descInput.hidden = select.value !== OTHER;
+  select.addEventListener("change", () => {
+    if (select.value === OTHER) { descInput.hidden = false; descInput.value = ""; descInput.focus(); }
+    else { descInput.hidden = true; descInput.value = select.value; }
+    update();
+  });
   const row = el("div", { class: "line-row" },
-    el("label", { class: "line-field line-desc-field" }, "Package or item",
-      el("input", { class: "line-desc", list: "item-names", value: line.description ?? "" })),
+    el("label", { class: "line-field line-desc-field" }, "Package or item", select, descInput),
     el("label", { class: "line-field line-qty-field" }, "Quantity",
       el("input", { class: "line-qty", inputmode: "numeric", value: line.quantity ?? "" })),
     el("label", { class: "line-field line-price-field" }, "Price for one (GHS)",
@@ -59,7 +84,7 @@ function addLine(line = {}) {
 }
 document.querySelector("#add-line").addEventListener("click", () => {
   addLine();
-  linesEl.lastElementChild.querySelector("input").focus();
+  linesEl.lastElementChild.querySelector("select").focus();
 });
 
 // ---------- read the form ----------
