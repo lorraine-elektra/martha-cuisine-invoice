@@ -1,7 +1,6 @@
 // Checks what the browser sends and works out the totals on the server.
 // The browser's own totals are never trusted or stored.
 import { calculateTotals } from "./totals.js";
-import { PACKAGES } from "./packages.js";
 
 export class ValidationError extends Error {}
 
@@ -17,46 +16,46 @@ const dateOrEmpty = (v, label) => {
   return s;
 };
 
-const pesewas = (v, label) => {
-  if (!Number.isInteger(v) || v < 0 || v > 100_000_000_00) {
-    throw new ValidationError(`${label} must be a valid amount`);
-  }
+const whole = (v, label, max) => {
+  if (!Number.isInteger(v) || v < 0 || v > max) throw new ValidationError(`${label} must be a valid number`);
   return v;
 };
 
+const MAX_MONEY = 100_000_000_00; // GHS 100 million, in pesewas
+
 export function checkInvoiceInput(input) {
   if (typeof input !== "object" || input === null) throw new ValidationError("Invalid invoice");
-  if (!PACKAGES[input.packageId]) throw new ValidationError("Unknown package");
-  if (!Number.isInteger(input.guests) || input.guests < 1 || input.guests > 100000) {
-    throw new ValidationError("Guests must be a whole number");
-  }
   const clientName = text(input.clientName, "Client name");
   if (!clientName) throw new ValidationError("Client name is required");
 
-  const extrasIn = Array.isArray(input.extras) ? input.extras : [];
-  if (extrasIn.length > 30) throw new ValidationError("Too many extras");
-  const extras = extrasIn.map((e) => ({
-    name: text(e?.name, "Extra name", 100) || "Extra",
-    amount: pesewas(e?.amount, "Extra amount"),
-  }));
+  const linesIn = Array.isArray(input.lines) ? input.lines : [];
+  if (linesIn.length < 1) throw new ValidationError("Add at least one item");
+  if (linesIn.length > 40) throw new ValidationError("Too many items");
+  const lines = linesIn.map((l, i) => {
+    const description = text(l?.description, `Item ${i + 1} description`, 200);
+    if (!description) throw new ValidationError(`Item ${i + 1} needs a description`);
+    const quantity = whole(l?.quantity, `Item ${i + 1} quantity`, 1_000_000);
+    if (quantity < 1) throw new ValidationError(`Item ${i + 1} quantity must be at least 1`);
+    return { description, quantity, unitPrice: whole(l?.unitPrice, `Item ${i + 1} price`, MAX_MONEY) };
+  });
 
   const dishesIn = Array.isArray(input.dishes) ? input.dishes : [];
   if (dishesIn.length > 60) throw new ValidationError("Too many dishes");
-  const dishes = dishesIn.map((d) => text(d, "Dish", 100)).filter(Boolean);
 
+  const discountType = input.discountType === "percent" ? "percent" : "amount";
   const values = {
     clientName,
     clientPhone: text(input.clientPhone, "Client phone", 40),
     eventDate: dateOrEmpty(input.eventDate, "Event date"),
     venue: text(input.venue, "Venue"),
     invoiceDate: dateOrEmpty(input.invoiceDate, "Invoice date"),
-    packageId: input.packageId,
-    guests: input.guests,
-    extras,
-    dishes,
-    discount: pesewas(input.discount ?? 0, "Discount"),
-    deposit: pesewas(input.deposit ?? 0, "Deposit"),
     notes: text(input.notes, "Notes", 1000),
+    dishes: dishesIn.map((d) => text(d, "Dish", 100)).filter(Boolean),
+    lines,
+    discountType,
+    discountValue: whole(input.discountValue ?? 0, "Discount", discountType === "percent" ? 10000 : MAX_MONEY),
+    taxBp: whole(input.taxBp ?? 0, "Tax", 10000),
+    deposit: whole(input.deposit ?? 0, "Deposit", MAX_MONEY),
   };
 
   let totals;

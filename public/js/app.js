@@ -1,7 +1,6 @@
 import { calculateTotals } from "/src/totals.js";
-import { cedisToPesewas, formatGHS } from "/src/money.js";
-import { PACKAGES } from "/src/packages.js";
-import { MENU, PACKAGE_INCLUDES } from "/src/menu.js";
+import { cedisToPesewas, percentToBp, formatGHS, formatPercent } from "/src/money.js";
+import { MENU, ITEM_SUGGESTIONS } from "/src/menu.js";
 import { api, wireLogout } from "/js/api.js";
 import { whatsappLink } from "/src/whatsapp.js";
 
@@ -12,6 +11,7 @@ const form = document.querySelector("#builder");
 const invoiceEl = document.querySelector("#invoice");
 const notices = document.querySelector("#notices");
 const barBalance = document.querySelector("#bar-balance");
+const linesEl = document.querySelector("#lines");
 
 // ---------- tiny helper: build elements safely (text only, never raw HTML) ----------
 function el(tag, props = {}, ...children) {
@@ -28,7 +28,7 @@ function el(tag, props = {}, ...children) {
 // One logo element, reused on every redraw, so the picture does not reload or flicker while typing.
 const logoEl = el("img", { class: "inv-logo", src: "/assets/logo.jpeg", alt: "Martha's Cuisines" });
 
-// ---------- build the dish checkboxes and the first extras row ----------
+// ---------- dish checkboxes (optional menu list) ----------
 const dishGroups = [
   ["Starters", "starters"], ["Desserts", "desserts"], ["Rice dishes", "rice"], ["Local dishes", "local"],
 ];
@@ -37,59 +37,71 @@ for (const [title, key] of dishGroups) {
   dishesEl.append(
     el("div", { class: "dish-group" }, el("h3", { text: title }),
       ...MENU[key].map((name) =>
-        el("label", { class: "dish" },
-          el("input", { type: "checkbox", name: "dish", value: name, "data-group": key }), name))),
+        el("label", { class: "dish" }, el("input", { type: "checkbox", name: "dish", value: name }), name))),
   );
 }
 
-const extrasEl = document.querySelector("#extras");
-const datalist = el("datalist", { id: "extra-names" }, ...MENU.extras.map((n) => el("option", { value: n })));
-form.append(datalist);
+// ---------- item rows: description, quantity, price ----------
+form.append(el("datalist", { id: "item-names" }, ...ITEM_SUGGESTIONS.map((n) => el("option", { value: n }))));
 
-function addExtraRow() {
-  const row = el("div", { class: "extra-row" },
-    el("input", { class: "extra-name", list: "extra-names", placeholder: "Extra item", "aria-label": "Extra item" }),
-    el("input", { class: "extra-amount", inputmode: "decimal", placeholder: "GHS", "aria-label": "Extra amount in cedis" }),
-    el("button", { type: "button", class: "secondary", "aria-label": "Remove extra", text: "x" }));
+function addLine(line = {}) {
+  const row = el("div", { class: "line-row" },
+    el("input", { class: "line-desc", list: "item-names", placeholder: "Package or item", "aria-label": "Package or item", value: line.description ?? "" }),
+    el("input", { class: "line-qty", inputmode: "numeric", placeholder: "Qty", "aria-label": "Quantity", value: line.quantity ?? "" }),
+    el("input", { class: "line-price", inputmode: "decimal", placeholder: "Price (GHS)", "aria-label": "Price for one, in cedis",
+      value: line.unitPrice === undefined ? "" : (line.unitPrice / 100).toFixed(2) }),
+    el("button", { type: "button", class: "secondary", "aria-label": "Remove item", text: "x" }));
   row.querySelector("button").addEventListener("click", () => { row.remove(); update(); });
-  extrasEl.append(row);
+  linesEl.append(row);
 }
-document.querySelector("#add-extra").addEventListener("click", addExtraRow);
+document.querySelector("#add-line").addEventListener("click", () => {
+  addLine();
+  linesEl.lastElementChild.querySelector("input").focus();
+});
 
 // ---------- read the form ----------
-// Empty box means 0. A typo returns null so we can flag the field.
-function readMoney(input) {
+// Each reader returns the value, or null for a typo (and marks the box). Empty means 0.
+function readWith(input, parse) {
   const raw = input.value.trim();
-  if (raw === "") { input.removeAttribute("aria-invalid"); return 0; }
-  try {
-    const pesewas = cedisToPesewas(raw);
-    input.removeAttribute("aria-invalid");
-    return pesewas;
-  } catch {
-    input.setAttribute("aria-invalid", "true");
-    return null;
-  }
+  input.removeAttribute("aria-invalid");
+  if (raw === "") return 0;
+  try { return parse(raw); } catch { input.setAttribute("aria-invalid", "true"); return null; }
 }
+const readMoney = (input) => readWith(input, cedisToPesewas);
+const readPercent = (input) => readWith(input, percentToBp);
+const readWhole = (input) => readWith(input, (raw) => {
+  if (!/^\d+$/.test(raw)) throw new Error("not whole");
+  return Number(raw);
+});
 
 function readForm() {
   const data = new FormData(form);
   const problems = [];
-  const discount = readMoney(form.elements.discount);
+
+  const lines = [];
+  [...linesEl.querySelectorAll(".line-row")].forEach((row, i) => {
+    const description = row.querySelector(".line-desc").value.trim();
+    const qtyInput = row.querySelector(".line-qty");
+    const priceInput = row.querySelector(".line-price");
+    const quantity = readWhole(qtyInput);
+    const unitPrice = readMoney(priceInput);
+    const untouched = !description && !qtyInput.value.trim() && !priceInput.value.trim();
+    if (untouched) return; // a blank row is ignored
+    const n = i + 1;
+    if (!description) problems.push(`Item ${n} needs a name`);
+    if (quantity === null) problems.push(`Item ${n} quantity must be a whole number`);
+    else if (quantity < 1) problems.push(`Item ${n} needs a quantity of 1 or more`);
+    if (unitPrice === null) problems.push(`Item ${n} price is not a valid amount`);
+    lines.push({ description, quantity: quantity ?? 0, unitPrice: unitPrice ?? 0 });
+  });
+
+  const discountType = data.get("discountType");
+  const discountValue = (discountType === "percent" ? readPercent : readMoney)(form.elements.discountValue);
+  const taxBp = readPercent(form.elements.tax);
   const deposit = readMoney(form.elements.deposit);
-  if (discount === null) problems.push("Discount is not a valid amount");
+  if (discountValue === null) problems.push("Discount is not valid");
+  if (taxBp === null) problems.push("Tax must be a percentage from 0 to 100");
   if (deposit === null) problems.push("Deposit is not a valid amount");
-
-  const extras = [];
-  for (const row of extrasEl.querySelectorAll(".extra-row")) {
-    const name = row.querySelector(".extra-name").value.trim();
-    const amountInput = row.querySelector(".extra-amount");
-    const amount = readMoney(amountInput);
-    if (amount === null) problems.push(`Extra "${name || "item"}" has an invalid amount`);
-    else if (name || amount) extras.push({ name: name || "Extra", amount });
-  }
-
-  const guests = Number(data.get("guests"));
-  if (!Number.isInteger(guests) || guests < 1) problems.push("Guests must be a whole number");
 
   return {
     problems,
@@ -100,11 +112,11 @@ function readForm() {
       venue: data.get("venue").trim(),
       invoiceDate: data.get("invoiceDate"),
       notes: data.get("notes").trim(),
-      packageId: data.get("packageId"),
-      guests, extras,
-      discount: discount ?? 0,
-      deposit: deposit ?? 0,
       dishes: data.getAll("dish"),
+      lines, discountType,
+      discountValue: discountValue ?? 0,
+      taxBp: taxBp ?? 0,
+      deposit: deposit ?? 0,
     },
   };
 }
@@ -114,26 +126,13 @@ const niceDate = (iso) =>
 
 // ---------- draw the invoice ----------
 function renderInvoice(v, t) {
-  const pkg = PACKAGES[v.packageId];
-  const inc = PACKAGE_INCLUDES[v.packageId];
   const picked = (group) => v.dishes.filter((d) => MENU[group].includes(d));
-
-  const rows = [
-    ["Catering: " + pkg.name + " package", String(v.guests), formatGHS(t.ratePerHead), formatGHS(t.packageTotal)],
-    ["Set-up charge", "1", formatGHS(t.setupCharge), formatGHS(t.setupCharge)],
-    ...v.extras.map((e) => [e.name, "1", formatGHS(e.amount), formatGHS(e.amount)]),
-  ];
-
-  const includedBlock = el("section", { class: "included" }, el("h3", { text: "What's included" }));
   const dishLine = (title, list) => list.length
     ? [el("h4", { text: title }), el("p", { text: list.join(", ") })] : [];
-  includedBlock.append(
-    ...dishLine("Starters", picked("starters")),
-    ...dishLine("Rice dishes", picked("rice")),
-    ...dishLine("Local dishes", picked("local")),
-    ...dishLine("Desserts", picked("desserts")),
-    ...dishLine("With every " + pkg.name + " order", inc.fixed),
-  );
+  const menuLists = [
+    ...dishLine("Starters", picked("starters")), ...dishLine("Rice dishes", picked("rice")),
+    ...dishLine("Local dishes", picked("local")), ...dishLine("Desserts", picked("desserts")),
+  ];
 
   const sumRow = (label, value) =>
     el("tr", { class: "sum" }, el("td", { colspan: 3, text: label }), el("td", { class: "num", text: value }));
@@ -145,14 +144,21 @@ function renderInvoice(v, t) {
   // pathLength 100 + dasharray leaves a small gap, so the ring stays "open" like the plate in the logo
   ring.innerHTML = '<ellipse cx="50" cy="50" rx="49" ry="49" pathLength="100" stroke-dasharray="92 8" transform="rotate(-60 50 50)"/>';
 
+  const showSubtotal = t.discount > 0 || t.tax > 0;
+  const discountLabel = v.discountType === "percent" ? `Discount (${formatPercent(v.discountValue)})` : "Discount";
+
   const table = el("table", {},
     el("thead", {}, el("tr", {},
-      el("th", { text: "Description" }), el("th", { class: "num", text: "Guests / qty" }),
-      el("th", { class: "num", text: "Rate" }), el("th", { class: "num", text: "Amount" }))),
+      el("th", { text: "Item" }), el("th", { class: "num", text: "Qty" }),
+      el("th", { class: "num", text: "Price" }), el("th", { class: "num", text: "Amount" }))),
     el("tbody", {},
-      ...rows.map(([d, q, r, a]) => el("tr", {}, el("td", { text: d }),
-        el("td", { class: "num", text: q }), el("td", { class: "num", text: r }), el("td", { class: "num", text: a }))),
-      t.discount ? sumRow("Discount", "- " + formatGHS(t.discount)) : null,
+      ...t.lines.map((l) => el("tr", {}, el("td", { text: l.description }),
+        el("td", { class: "num", text: String(l.quantity) }),
+        el("td", { class: "num", text: formatGHS(l.unitPrice) }),
+        el("td", { class: "num", text: formatGHS(l.amount) }))),
+      showSubtotal ? sumRow("Subtotal", formatGHS(t.subtotal)) : null,
+      t.discount ? sumRow(discountLabel, "- " + formatGHS(t.discount)) : null,
+      t.tax ? sumRow(`Tax (${formatPercent(v.taxBp)})`, formatGHS(t.tax)) : null,
       sumRow("Total", formatGHS(t.total)),
       t.deposit ? sumRow("Deposit paid", "- " + formatGHS(t.deposit)) : null));
 
@@ -174,7 +180,7 @@ function renderInvoice(v, t) {
       el("div", {}, el("h3", { text: "Event" }),
         el("p", { text: niceDate(v.eventDate) || "Event date" }), el("p", { text: v.venue }))),
     table,
-    includedBlock,
+    menuLists.length ? el("section", { class: "included" }, el("h3", { text: "Menu" }), ...menuLists) : null,
     v.notes ? el("section", { class: "included" }, el("h3", { text: "Notes" }), el("p", { text: v.notes })) : null,
     el("div", { class: "balance" }, ring,
       el("span", { class: "label", text: "Balance due" }),
@@ -211,6 +217,7 @@ function update() {
 async function save() {
   const { problems, values } = readForm();
   if (problems.length) { notices.textContent = problems.join(". "); return; }
+  if (!values.lines.length) { notices.textContent = "Add at least one item"; return; }
   const saveBtn = document.querySelector("#save");
   saveBtn.disabled = true;
   try {
@@ -222,8 +229,7 @@ async function save() {
     history.replaceState(null, "", "/?id=" + saved.id);
     document.querySelector("#form-title").textContent = "Invoice " + saved.number;
     update();
-    notices.textContent = ""; // the server's saved total replaces the local one on screen
-    barBalance.textContent = formatGHS(saved.balance);
+    barBalance.textContent = formatGHS(saved.balance); // the server's saved figure wins
     flash("Saved as " + saved.number);
   } catch (err) {
     notices.textContent = err.message;
@@ -233,30 +239,28 @@ async function save() {
 }
 
 function flash(message) {
-  const old = document.querySelector("#flash");
-  old?.remove();
+  document.querySelector("#flash")?.remove();
   const note = el("p", { id: "flash", class: "flash", role: "status", text: message });
   document.body.append(note);
   setTimeout(() => note.remove(), 3000);
 }
+
+const plain = (n) => String(Number(n.toFixed(2))); // 750 / 100 -> "7.5"
 
 function fillForm(inv) {
   const f = form.elements;
   f.clientName.value = inv.clientName; f.clientPhone.value = inv.clientPhone;
   f.eventDate.value = inv.eventDate; f.venue.value = inv.venue;
   f.invoiceDate.value = inv.invoiceDate; f.notes.value = inv.notes;
-  f.packageId.value = inv.packageId; f.guests.value = inv.guests;
-  f.discount.value = inv.discount ? (inv.discount / 100).toFixed(2) : "";
+  f.discountType.value = inv.discountType;
+  f.discountValue.value = !inv.discountValue ? ""
+    : inv.discountType === "percent" ? plain(inv.discountValue / 100) : (inv.discountValue / 100).toFixed(2);
+  f.tax.value = inv.taxBp ? plain(inv.taxBp / 100) : "";
   f.deposit.value = inv.deposit ? (inv.deposit / 100).toFixed(2) : "";
   form.querySelectorAll('input[name="dish"]').forEach((box) => { box.checked = inv.dishes.includes(box.value); });
-  extrasEl.replaceChildren();
-  for (const e of inv.extras) {
-    addExtraRow();
-    const row = extrasEl.lastElementChild;
-    row.querySelector(".extra-name").value = e.name;
-    row.querySelector(".extra-amount").value = (e.amount / 100).toFixed(2);
-  }
-  if (!inv.extras.length) addExtraRow();
+  linesEl.replaceChildren();
+  inv.lines.forEach(addLine);
+  if (!inv.lines.length) addLine();
   state.id = inv.id; state.number = inv.number; state.status = inv.status;
   document.querySelector("#form-title").textContent = "Invoice " + inv.number;
 }
@@ -278,12 +282,13 @@ whatsappBtn.addEventListener("click", () => {
 });
 
 form.addEventListener("input", update);
+form.addEventListener("submit", (e) => e.preventDefault()); // Enter in a box must not reload the page
 document.querySelector("#print").addEventListener("click", () => window.print());
 document.querySelector("#save").addEventListener("click", save);
 wireLogout();
 
 form.elements.invoiceDate.value = new Date().toISOString().slice(0, 10);
-addExtraRow();
+addLine();
 update();
 
 const editId = new URLSearchParams(location.search).get("id");

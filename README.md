@@ -1,6 +1,6 @@
 # Martha's Cuisines Invoice App
 
-A small web app for a Ghanaian catering business. Create a branded invoice from a package (Bronze, Silver or Gold), guest count, dishes and extras. Save it, find it again, mark it paid, print it as a PDF, and send a WhatsApp message to the client.
+A small web app for a Ghanaian catering business. The client types each item by hand (package or item name, quantity and price for one), plus any discount (GHS or %), tax (%) and deposit, and the app does the calculation. Save the invoice, find it again, mark it paid, print it as a PDF, and send a WhatsApp message to the client.
 
 ## Run it
 
@@ -22,7 +22,7 @@ Open http://localhost:3000 and log in.
 npm test
 ```
 
-runs all tests (17). `npm run backup` saves a safe copy of the database into `backups/`.
+runs all tests (25). `npm run backup` saves a safe copy of the database into `backups/`.
 
 ## How it fits together
 
@@ -35,6 +35,7 @@ flowchart LR
   T -. same file also runs in the browser for live totals .-> B
 ```
 
+- **Order of calculation:** quantity x price for each item, added up to the subtotal. Then the discount comes off, then tax is charged on what is left, then the deposit comes off to give the balance due. Percentages are rounded to the nearest pesewa.
 - **Money is whole pesewas** (100 pesewas = 1 cedi), never decimals, so totals cannot drift.
 - **`src/totals.js` is the single source of truth.** The browser uses it for live totals. The server runs it again and stores its own answer, ignoring any total the browser sends.
 - **Invoice numbers** (MC-0001, MC-0002) are assigned by the server inside a database transaction.
@@ -74,6 +75,7 @@ Local run, 100 saves in a row from the browser: median 14 ms and 95th percentile
 ## Known limits
 
 - One shared password, no separate users.
-- Prices and menu live in `src/packages.js` and `src/menu.js`, so changing them needs a code edit.
+- The optional dish list and the item name suggestions live in `src/menu.js`, so changing them needs a code edit.
+- Quantities are whole numbers (no 2.5 kg).
 - WhatsApp links cannot attach files: save the PDF, then attach it in the chat that opens.
-- No tax or VAT line yet.
+- Invoices saved by the earlier fixed-package version still open. They are shown as items.

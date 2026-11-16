@@ -11,6 +11,21 @@ export function cedisToPesewas(input) {
   return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
 }
 
+/** Turn a typed percentage like "10" or "7.5" into basis points (1000 or 750). Max 100%. */
+export function percentToBp(input) {
+  const text = String(input).replace(/%/g, "").trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(text)) throw new Error(`Not a valid percentage: "${input}"`);
+  const [whole, fraction = ""] = text.split(".");
+  const bp = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  if (bp > 10000) throw new Error("A percentage cannot be more than 100");
+  return bp;
+}
+
+/** 750 -> "7.5%", 1000 -> "10%" */
+export function formatPercent(bp) {
+  return `${Number((bp / 100).toFixed(2))}%`;
+}
+
 /** Turn pesewas into a display string like "GHS 22,100.00". */
 export function formatGHS(pesewas) {
   if (!Number.isInteger(pesewas)) {

@@ -1,4 +1,5 @@
-// Dishes from the 2026 rate card. In Phase 3 this moves into the database.
+// Dishes from the 2026 rate card. Used for the optional "Menu" list on an invoice
+// and for suggestions when typing an item name. Prices are always typed in by hand.
 export const MENU = {
   starters: ["Plantain chips & coated groundnuts", "Spring rolls / samosa"],
   desserts: ["Fruit platter", "Ice cream", "Mini pancakes", "Abele"],
@@ -13,14 +14,7 @@ export const MENU = {
   ],
 };
 
-const BASE = [
-  "Beef sauce", "Chicken (grilled or fried)", "Fish", "Salads",
-  "Spaghetti stir fry", "Gari", "Tomato sauce / stew", "Green chilli sauce", "Shito",
+// Suggestions for the item description box. She can type anything.
+export const ITEM_SUGGESTIONS = [
+  "Bronze package", "Silver package", "Gold package", "Set-up charge", ...MENU.extras,
 ];
-
-// What each package already includes, besides the dishes picked on the form.
-export const PACKAGE_INCLUDES = {
-  bronze: { fixed: BASE, starter: false, dessert: false },
-  silver: { fixed: [...BASE, "Kelewele"], starter: "either", dessert: "either" },
-  gold: { fixed: [...BASE, "Kelewele"], starter: true, dessert: true },
-};

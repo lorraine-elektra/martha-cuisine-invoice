@@ -7,7 +7,7 @@ import { createInvoice, updateInvoice, getInvoice, listInvoices, setPaid } from 
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // Only these source files are safe and needed in the browser.
-const BROWSER_FILES = new Set(["money.js", "totals.js", "packages.js", "menu.js", "whatsapp.js"]);
+const BROWSER_FILES = new Set(["money.js", "totals.js", "menu.js", "whatsapp.js"]);
 
 export function createApp({ db, password, secret, trustProxy = false }) {
   const app = express();

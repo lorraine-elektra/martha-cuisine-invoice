@@ -14,6 +14,9 @@ The builder (the user) is a CS student aiming for AI engineering. The project do
 - Colours: burnt orange, black, white. Logo: `logo.jpeg` (orange script M, black fork and spoon ring).
 - Pricing (2026 rate card, `2026 MARTHA'S CUISINE MENU.pdf`): Bronze 80, Silver 100, Gold 120 cedis per head. Set up charge 500 GH. Minimum 150 guests. Packages can be adjusted to suit the customer. Menu also has starters (choose 1), desserts (choose 1), rice dishes, local dishes and extras.
 
+## Change on 2026-11-16: manual items
+The client wants to type the package, quantity and price themselves, and have the app calculate from those plus discounts. So the invoice is a list of free-form items (name, quantity, price for one), not a fixed rate card. The app adds a discount (GHS or %), an optional tax (%) and a deposit. The rate card, set-up charge rule and 150-guest minimum are no longer built into the code. This also settles the tax question: there is an optional tax percentage, default 0. Old invoices stay readable.
+
 ## Goals
 - Create an invoice from: client, event date and venue, package, guest count, chosen dishes, extras, adjustments.
 - Calculate totals correctly in GHS: package price x guests, plus set up charge, plus extras, minus discount, minus deposit paid, equals balance due.

@@ -29,32 +29,35 @@
       </fieldset>
 
       <fieldset>
-        <legend>Package</legend>
-        <label>Package
-          <select name="packageId">
-            <option value="bronze">Bronze, GHS 80 per head</option>
-            <option value="silver">Silver, GHS 100 per head</option>
-            <option value="gold" selected>Gold, GHS 120 per head</option>
-          </select>
-        </label>
-        <label>Number of guests <input name="guests" type="number" min="1" step="1" value="150" inputmode="numeric"></label>
+        <legend>Items</legend>
+        <p class="hint">Type the package or item, the quantity (for example guests) and the price for one.</p>
+        <div id="lines"></div>
+        <button type="button" id="add-line" class="secondary">Add item</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Discount, tax and deposit</legend>
+        <div class="discount-row">
+          <label>Discount <input name="discountValue" inputmode="decimal" placeholder="0"></label>
+          <label>Type
+            <select name="discountType">
+              <option value="amount">GHS</option>
+              <option value="percent">%</option>
+            </select>
+          </label>
+        </div>
+        <label>Tax or VAT (%) <input name="tax" inputmode="decimal" placeholder="0"></label>
+        <label>Deposit paid (GHS) <input name="deposit" inputmode="decimal" placeholder="0"></label>
       </fieldset>
 
       <fieldset id="dishes">
-        <legend>Dishes</legend>
+        <legend>Menu (optional)</legend>
+        <p class="hint">Tick the dishes to list on the invoice. This does not change the price.</p>
         <!-- filled by app.js from src/menu.js -->
       </fieldset>
 
       <fieldset>
-        <legend>Extras</legend>
-        <div id="extras"></div>
-        <button type="button" id="add-extra" class="secondary">Add extra</button>
-      </fieldset>
-
-      <fieldset>
-        <legend>Payment</legend>
-        <label>Discount (GHS) <input name="discount" inputmode="decimal" placeholder="0"></label>
-        <label>Deposit paid (GHS) <input name="deposit" inputmode="decimal" placeholder="0"></label>
+        <legend>Dates and notes</legend>
         <label>Invoice date <input name="invoiceDate" type="date"></label>
         <label>Notes for the client <textarea name="notes" rows="3" maxlength="1000"></textarea></label>
       </fieldset>
