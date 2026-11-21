@@ -1,6 +1,7 @@
 import { api, wireLogout } from "/js/api.js";
 import { formatGHS } from "/src/money.js";
-import { el, toast, confirmDialog, withLoading } from "/js/ui.js";
+import { el, toast, withLoading, setError, clearError } from "/js/ui.js";
+import { wireNavMenu } from "/js/nav.js";
 
 const list = document.querySelector("#list");
 const msg = document.querySelector("#msg");
@@ -16,27 +17,47 @@ const METHODS = { cash: "Cash", momo: "MoMo", bank: "Bank" };
 const dialog = document.querySelector("#pay-dialog");
 const payForm = document.querySelector("#pay-form");
 
-// Opens the payment-method dialog; resolves to "cash" | "momo" | "bank", or null if cancelled.
-function askMethod(inv, opener) {
+function methodKey(inv) {
+  const raw = inv.paymentMethod ?? inv.payment_method ?? "";
+  const key = String(raw).trim().toLowerCase();
+  return METHODS[key] ? key : "";
+}
+
+const pinInput = document.querySelector("#pay-pin");
+pinInput.addEventListener("input", () => { pinInput.value = pinInput.value.replace(/\D/g, ""); clearError(pinInput); });
+
+// Opens the payment dialog; resolves to { method, pin }, or null if cancelled. `problem` shows a PIN error.
+function askMethod(inv, opener, problem = "") {
   return new Promise((resolve) => {
     document.querySelector("#pay-for").textContent = `${inv.number}, ${inv.clientName}`;
     payForm.reset();
+    clearError(pinInput);
+    let settled = false;
     const done = (value) => {
+      if (settled) return;
+      settled = true;
       payForm.removeEventListener("submit", onSubmit);
       cancelBtn.removeEventListener("click", onCancel);
-      dialog.removeEventListener("close", onClose);
+      dialog.removeEventListener("cancel", onCancelKey);
       if (dialog.open) dialog.close();
       opener.focus();
       resolve(value);
     };
-    const onSubmit = (e) => { e.preventDefault(); done(new FormData(payForm).get("method")); };
+    const onSubmit = (e) => {
+      e.preventDefault();
+      const checked = payForm.querySelector('input[name="method"]:checked');
+      if (!checked) return;
+      if (!/^\d{4,8}$/.test(pinInput.value)) { setError(pinInput, "Enter your PIN (4 to 8 digits)."); pinInput.focus(); return; }
+      done({ method: checked.value, pin: pinInput.value });
+    };
     const onCancel = () => done(null);
-    const onClose = () => done(null); // Escape key
+    const onCancelKey = (e) => { e.preventDefault(); onCancel(); };
     const cancelBtn = document.querySelector("#pay-cancel");
     payForm.addEventListener("submit", onSubmit);
     cancelBtn.addEventListener("click", onCancel);
-    dialog.addEventListener("close", onClose);
+    dialog.addEventListener("cancel", onCancelKey);
     dialog.showModal();
+    if (problem) { setError(pinInput, problem); pinInput.focus(); }
   });
 }
 
@@ -66,15 +87,14 @@ const matches = (inv, want) =>
   want === "all" ? true
     : want === "unpaid" ? inv.status !== "paid"
     : want === "paid" ? inv.status === "paid"
-    : inv.status === "paid" && inv.paymentMethod === want;
+    : inv.status === "paid" && methodKey(inv) === want;
 
 let fetched = [];
 function render() {
   const want = show.value;
   const invoices = fetched.filter((inv) => matches(inv, want));
   const searching = search.value.trim() !== "";
-  const narrowed = searching || want !== "all";
-  count.textContent = `${invoices.length} ${invoices.length === 1 ? "invoice" : "invoices"}${narrowed ? " found" : ""}`;
+  count.textContent = `${invoices.length} ${invoices.length === 1 ? "invoice" : "invoices"} found`;
   if (!invoices.length) {
     list.replaceChildren(el("li", { class: "empty" },
       want !== "all" && fetched.length ? "No invoices to show here. Choose All invoices to see the rest."
@@ -84,39 +104,49 @@ function render() {
   }
   list.replaceChildren(...invoices.map((inv) => {
     const paid = inv.status === "paid";
-    const toggle = el("button", {
-      type: "button", class: "secondary", text: paid ? "Mark unpaid" : "Mark paid",
-      "aria-label": `${paid ? "Mark unpaid" : "Mark paid"}: ${inv.number}, ${inv.clientName}`,
+    const key = methodKey(inv);
+    // A paid invoice is locked: no button at all, unless it is an old one still missing its payment method.
+    const label = paid ? "Add payment method" : "Mark paid";
+    const toggle = paid && key ? null : el("button", {
+      type: "button", class: "secondary", text: label,
+      "aria-label": `${label}: ${inv.number}, ${inv.clientName}`,
     });
+    // Returns an error message when the PIN was refused (so the dialog can open again), otherwise "".
     async function send(body, doneMessage) {
+      let pinProblem = "";
       await withLoading(toggle, "Saving...", async () => {
-        try { await api(`/invoices/${inv.id}/paid`, { method: "POST", body }); toast(doneMessage); await load({ quiet: true }); }
-        catch (err) { toast(err.message + ".", { type: "error" }); }
+        try { await api(`/invoices/${inv.id}/paid`, { method: "POST", body }); toast(doneMessage, { type: "success" }); await load({ quiet: true }); }
+        catch (err) {
+          if (err.pinRequired) pinProblem = err.message + ".";
+          else toast(err.message + ".", { type: "error" });
+        }
       });
+      return pinProblem;
     }
-    toggle.addEventListener("click", async () => {
-      if (paid) {
-        const yes = await confirmDialog({
-          title: "Mark as unpaid?", message: `Invoice ${inv.number} for ${inv.clientName} will show as unpaid again.`,
-          confirmLabel: "Mark unpaid",
-        });
-        if (yes) send({ paid: false }, `${inv.number} marked as unpaid.`);
-        else toggle.focus();
-        return;
+    toggle?.addEventListener("click", async () => {
+      let problem = "";
+      for (;;) {
+        const answer = await askMethod(inv, toggle, problem);
+        if (!answer) return;
+        problem = await send({ paid: true, method: answer.method, pin: answer.pin },
+          `${inv.number} marked as paid via ${METHODS[answer.method]}.`);
+        if (!problem) return;
       }
-      const method = await askMethod(inv, toggle);
-      if (method) send({ paid: true, method }, `${inv.number} marked as paid.`);
     });
     return el("li", { class: "inv-item" },
-      el("a", { class: "inv-main", href: "/?id=" + inv.id, "aria-label": `Open invoice ${inv.number} for ${inv.clientName}` },
+      el("a", { class: "inv-main", href: "/?id=" + inv.id, "aria-label": `${paid ? "View paid" : "Open"} invoice ${inv.number} for ${inv.clientName}` },
         el("strong", { text: inv.number }),
         el("span", { text: inv.clientName }),
         inv.eventDate ? el("span", { class: "small", text: niceDate(inv.eventDate) }) : null),
       el("div", { class: "inv-side" },
         el("span", { class: "balance-cell" }, el("span", { class: "small", text: "Balance due" }),
           el("strong", { text: formatGHS(Math.max(0, inv.balance)) })),
-        el("span", { class: paid ? "status paid" : "status", text: paid ? (METHODS[inv.paymentMethod] ? `Paid by ${METHODS[inv.paymentMethod]}` : "Paid") : "Unpaid" }),
-        toggle));
+        el("span", { class: "status-wrap" },
+          el("span", {
+            class: paid ? "status paid" : "status",
+            text: paid ? (key ? `Paid (${METHODS[key]})` : "Paid") : "Unpaid",
+          })),
+        toggle ? el("div", { class: "inv-actions" }, toggle) : null));
   }));
 }
 
@@ -124,3 +154,8 @@ let timer;
 search.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(load, 250); });
 show.addEventListener("change", render);
 load();
+
+wireNavMenu();
+
+// Scroll to top on page load
+window.scrollTo(0, 0);

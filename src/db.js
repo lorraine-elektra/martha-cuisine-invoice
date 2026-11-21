@@ -36,7 +36,34 @@ export function openDb(file = "invoices.db") {
   add("discount_value", "INTEGER NOT NULL DEFAULT 0");
   add("subtotal", "INTEGER NOT NULL DEFAULT 0");
   add("payment_method", "TEXT NOT NULL DEFAULT ''");
+  lockPaidInvoices(db);
   return db;
+}
+
+// Once an invoice is paid it is a record: the database itself refuses to change or delete it,
+// so no route, script or future code can quietly rewrite one. The only change still allowed is
+// filling in the payment method of an old paid invoice that never had one.
+const LOCKED_COLUMNS = `id, number, status, client_name, client_phone, event_date, venue, invoice_date,
+  package_id, guests, extras, dishes, discount, deposit, total, balance, notes, created_at, paid_at,
+  lines, discount_type, discount_value, subtotal`;
+
+function lockPaidInvoices(db) {
+  db.exec(`
+    DROP TRIGGER IF EXISTS paid_invoice_no_change;
+    CREATE TRIGGER paid_invoice_no_change BEFORE UPDATE OF ${LOCKED_COLUMNS} ON invoices
+    WHEN OLD.status = 'paid'
+    BEGIN SELECT RAISE(ABORT, 'A paid invoice cannot be changed'); END;
+
+    DROP TRIGGER IF EXISTS paid_invoice_no_method_change;
+    CREATE TRIGGER paid_invoice_no_method_change BEFORE UPDATE OF payment_method ON invoices
+    WHEN OLD.status = 'paid' AND (OLD.payment_method <> '' OR NEW.payment_method NOT IN ('cash', 'momo', 'bank'))
+    BEGIN SELECT RAISE(ABORT, 'A paid invoice cannot be changed'); END;
+
+    DROP TRIGGER IF EXISTS paid_invoice_no_delete;
+    CREATE TRIGGER paid_invoice_no_delete BEFORE DELETE ON invoices
+    WHEN OLD.status = 'paid'
+    BEGIN SELECT RAISE(ABORT, 'A paid invoice cannot be deleted'); END;
+  `);
 }
 
 // Rebuilds the items of an invoice saved before manual entry existed.
@@ -97,8 +124,9 @@ export function createInvoice(db, v, t) {
   }
 }
 
+// Returns null when there is no such invoice, or when it is paid and so can no longer be changed.
 export function updateInvoice(db, id, v, t) {
-  const info = db.prepare(`UPDATE invoices SET ${SAVE_COLUMNS} WHERE id=?`).run(...saveParams(v, t), id);
+  const info = db.prepare(`UPDATE invoices SET ${SAVE_COLUMNS} WHERE id=? AND status<>'paid'`).run(...saveParams(v, t), id);
   return info.changes ? getInvoice(db, id) : null;
 }
 
@@ -114,8 +142,16 @@ export function listInvoices(db, q = "") {
     ORDER BY id DESC LIMIT 200`).all(like, like).map(toInvoice);
 }
 
-export function setPaid(db, id, paid, method = "") {
-  const info = db.prepare("UPDATE invoices SET status=?, paid_at=?, payment_method=? WHERE id=?")
-    .run(paid ? "paid" : "unpaid", paid ? new Date().toISOString() : null, paid ? method : "", id);
+// Paying is one-way: there is no way back to unpaid. Returns null if it was already paid.
+export function markPaid(db, id, method) {
+  const info = db.prepare("UPDATE invoices SET status='paid', paid_at=?, payment_method=? WHERE id=? AND status<>'paid'")
+    .run(new Date().toISOString(), method, id);
+  return info.changes ? getInvoice(db, id) : null;
+}
+
+// For invoices marked paid before payment methods were recorded. Works once, only while the method is empty.
+export function addPaymentMethod(db, id, method) {
+  const info = db.prepare("UPDATE invoices SET payment_method=? WHERE id=? AND status='paid' AND payment_method=''")
+    .run(method, id);
   return info.changes ? getInvoice(db, id) : null;
 }

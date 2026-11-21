@@ -14,18 +14,24 @@
 <body>
   <a class="skip-link" href="#builder">Skip to the invoice form</a>
   <nav class="topnav" aria-label="Main">
-    <span class="brand">Martha's Cuisines</span>
-    <a href="/" class="current" aria-current="page">New invoice</a>
-    <a href="/invoices.html">All invoices</a>
-    <button type="button" id="logout" class="link">Log out</button>
+    <a href="/" class="brand-logo" aria-label="Martha's Cuisines home">
+      <img src="/assets/logo.jpeg" alt="Martha's Cuisines" class="nav-logo">
+    </a>
+    <button type="button" id="menu-toggle" class="menu-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Menu">
+      <span class="menu-icon"></span>
+    </button>
+    <div id="nav-menu-backdrop" class="nav-menu-backdrop"></div>
+    <div id="nav-menu" class="nav-menu">
+      <a href="/" class="current" aria-current="page">New Invoice</a>
+      <a href="/invoices.html">All Invoices</a>
+      <button type="button" id="preview-toggle" class="nav-link">Preview Invoice</button>
+      <button type="button" id="logout" class="link">Log out</button>
+    </div>
   </nav>
-  <div class="view-switch" role="group" aria-label="Choose what to show">
-    <button type="button" data-view="edit" aria-pressed="true">Edit</button>
-    <button type="button" data-view="preview" aria-pressed="false">Preview invoice</button>
-  </div>
   <main class="app" data-view="edit">
     <form id="builder" class="builder" autocomplete="off" novalidate>
       <h1 id="form-title">New invoice</h1>
+      <p id="locked-note" class="locked-note" hidden></p>
 
       <fieldset>
         <legend>Client and event</legend>
@@ -112,6 +118,7 @@
     </form>
 
     <section class="preview" aria-label="Invoice preview">
+      <h1 class="page-sticky-title" id="preview-page-title" hidden>Preview invoice</h1>
       <article id="invoice" class="invoice"></article>
     </section>
   </main>

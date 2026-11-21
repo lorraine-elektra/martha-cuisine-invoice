@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#B83A00">
   <title>All invoices | Martha's Cuisines</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,10 +14,18 @@
 <body class="plain">
   <a class="skip-link" href="#q">Skip to search</a>
   <nav class="topnav" aria-label="Main">
-    <span class="brand">Martha's Cuisines</span>
-    <a href="/">New invoice</a>
-    <a href="/invoices.html" class="current" aria-current="page">All invoices</a>
-    <button type="button" id="logout" class="link">Log out</button>
+    <a href="/" class="brand-logo" aria-label="Martha's Cuisines home">
+      <img src="/assets/logo.jpeg" alt="Martha's Cuisines" class="nav-logo">
+    </a>
+    <button type="button" id="menu-toggle" class="menu-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Menu">
+      <span class="menu-icon"></span>
+    </button>
+    <div id="nav-menu-backdrop" class="nav-menu-backdrop"></div>
+    <div id="nav-menu" class="nav-menu">
+      <a href="/">New Invoice</a>
+      <a href="/invoices.html" class="current" aria-current="page">All Invoices</a>
+      <button type="button" id="logout" class="link">Log out</button>
+    </div>
   </nav>
   <main class="list-page">
     <div class="list-head">
@@ -34,10 +42,9 @@
         <select id="show">
           <option value="all">All invoices</option>
           <option value="unpaid">Unpaid</option>
-          <option value="paid">Paid</option>
-          <option value="cash">Paid by cash</option>
-          <option value="momo">Paid by MoMo</option>
-          <option value="bank">Paid by bank</option>
+          <option value="cash">Cash</option>
+          <option value="momo">MoMo</option>
+          <option value="bank">Bank</option>
         </select>
       </div>
     </div>
@@ -45,7 +52,7 @@
     <ul id="list" class="inv-list"></ul>
   </main>
   <dialog id="pay-dialog" class="pay-dialog" aria-labelledby="pay-title">
-    <form method="dialog" id="pay-form">
+    <form id="pay-form">
       <h2 id="pay-title">How was it paid?</h2>
       <p id="pay-for" class="small"></p>
       <fieldset class="pay-methods">
@@ -54,6 +61,12 @@
         <label><input type="radio" name="method" value="momo"> Mobile money (MoMo)</label>
         <label><input type="radio" name="method" value="bank"> Bank transfer</label>
       </fieldset>
+      <div class="field">
+        <label for="pay-pin">Your PIN</label>
+        <input id="pay-pin" type="password" name="pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" aria-describedby="err-pay-pin" required>
+        <p id="err-pay-pin" class="field-error" role="alert"></p>
+      </div>
+      <p class="small pay-warning">Once marked as paid, the invoice is locked. It cannot be edited or marked as unpaid again.</p>
       <div class="pay-actions">
         <button type="button" class="secondary" id="pay-cancel">Cancel</button>
         <button type="submit">Mark paid</button>

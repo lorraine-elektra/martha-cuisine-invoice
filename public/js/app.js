@@ -3,10 +3,16 @@ import { cedisToPesewas, percentToBp, formatGHS, formatPercent } from "/src/mone
 import { MENU, ITEM_SUGGESTIONS } from "/src/menu.js";
 import { api, wireLogout } from "/js/api.js";
 import { whatsappLink } from "/src/whatsapp.js";
-import { el, toast, setError, setWarning, clearError, withLoading } from "/js/ui.js";
+import { el, toast, setError, setWarning, clearError, withLoading, confirmDialog } from "/js/ui.js";
+import { wireNavMenu } from "/js/nav.js";
 
 // The saved invoice this screen is showing. id and number are null until the first save.
-const state = { id: null, number: null, status: "unpaid" };
+const state = { id: null, number: null, status: "unpaid", paymentMethod: "" };
+const METHODS = { cash: "Cash", momo: "MoMo", bank: "Bank" };
+function methodKey(raw) {
+  const key = String(raw ?? "").trim().toLowerCase();
+  return METHODS[key] ? key : "";
+}
 
 // Same limits the server enforces (src/invoices.js).
 const MAX_MONEY = 100_000_000_00; // GHS 100 million, in pesewas
@@ -26,6 +32,7 @@ const cancelEditBtn = document.querySelector("#cancel-edit");
 const draftEl = document.querySelector("#draft");
 const draftNote = document.querySelector("#err-draft");
 const itemsNote = document.querySelector("#err-items");
+const appEl = document.querySelector(".app");
 
 // One logo element, reused on every redraw, so the picture does not reload or flicker while typing.
 const logoEl = el("img", { class: "inv-logo", src: "/assets/logo.jpeg", alt: "Martha's Cuisines" });
@@ -126,6 +133,8 @@ function itemPicker(select) {
   const optEls = new Map();
   let group = null;
   for (const o of opts) {
+    // Skip the placeholder option (empty value) in the dropdown list
+    if (o.value === "") continue;
     const g = o.parentElement.tagName === "OPTGROUP" ? o.parentElement.label : null;
     if (g !== group && g) pop.append(el("div", { class: "picker-group", role: "presentation", text: g }));
     group = g;
@@ -358,21 +367,21 @@ function readAmount(input, parse, tooBig) {
 }
 
 function readForm() {
-  const data = new FormData(form);
-  const discountType = data.get("discountType");
+  // Read from the boxes themselves, not FormData: FormData skips disabled boxes, and a paid invoice is all disabled.
+  const discountType = f.discountType.value;
   const percent = discountType === "percent";
   const discountValue = readAmount(f.discountValue, percent ? parsePercent : parseMoney, percent);
   const deposit = readAmount(f.deposit, parseMoney, false);
   return {
     invalid: discountValue === null || deposit === null,
     values: {
-      clientName: data.get("clientName").trim(),
-      clientPhone: data.get("clientPhone").trim(),
-      eventDate: data.get("eventDate"),
-      venue: data.get("venue").trim(),
-      invoiceDate: data.get("invoiceDate"),
-      notes: data.get("notes").trim(),
-      dishes: data.getAll("dish"),
+      clientName: f.clientName.value.trim(),
+      clientPhone: f.clientPhone.value.trim(),
+      eventDate: f.eventDate.value,
+      venue: f.venue.value.trim(),
+      invoiceDate: f.invoiceDate.value,
+      notes: f.notes.value.trim(),
+      dishes: [...form.querySelectorAll('input[name="dish"]:checked')].map((box) => box.value),
       lines: items.map((i) => ({ ...i })), discountType,
       discountValue: discountValue ?? 0,
       deposit: deposit ?? 0,
@@ -433,15 +442,14 @@ function renderInvoice(v, t) {
         el("h2", { text: "Invoice" }),
         state.number ? el("p", { class: "inv-number", text: state.number }) : null,
         v.invoiceDate ? el("p", { text: "Date: " + niceDate(v.invoiceDate) }) : null,
-        state.status === "paid" ? el("p", { class: "paid stamp", text: "Paid" }) : null)),
+        state.status === "paid" ? el("p", { class: "paid stamp", text: (() => { const k = methodKey(state.paymentMethod); return k ? `Paid (${METHODS[k]})` : "Paid"; })() }) : null)),
     el("section", { class: "inv-parties" },
       el("div", {}, el("h3", { text: "Bill to" }),
-        v.clientName ? el("p", { class: "party-name", text: v.clientName }) : el("p", { class: "blank", text: "Client name" }),
+        v.clientName ? el("p", { class: "party-name", text: v.clientName }) : null,
         v.clientPhone ? el("p", { text: v.clientPhone }) : null),
       el("div", {}, el("h3", { text: "Event" }),
         v.eventDate ? el("p", { text: niceDate(v.eventDate) }) : null,
-        v.venue ? el("p", { text: v.venue }) : null,
-        !v.eventDate && !v.venue ? el("p", { class: "blank", text: "Event details" }) : null)),
+        v.venue ? el("p", { text: v.venue }) : null)),
     table,
     el("div", { class: "balance" },
       el("span", { class: "label", text: "Balance due" }),
@@ -449,17 +457,16 @@ function renderInvoice(v, t) {
     menuLists.length ? el("section", { class: "included" }, el("h3", { text: "Menu" }), ...menuLists) : null,
     v.notes ? el("section", { class: "included" }, el("h3", { text: "Notes" }), el("p", { text: v.notes })) : null,
     el("section", { class: "pay" },
-      el("div", {}, el("h3", { text: "Pay by bank transfer" }),
+      el("div", {}, el("h3", { text: "PAY BY BANK TRANSFER" }),
         el("p", { text: "Fidelity Bank, Madina Branch" }),
         el("p", { text: "Mawufemor Afi Gborglah" }),
         el("p", { text: "Account 2030453360411" })),
-      el("div", {}, el("h3", { text: "Pay by mobile money" }),
+      el("div", {}, el("h3", { text: "PAY BY MOBILE MONEY" }),
         el("p", { text: "0546155309" }),
         el("p", { text: "Mawufemor Afi Gborglah" }))),
     el("section", { class: "signatures" },
       el("div", { class: "sig" }, el("div", { class: "sig-line" }),
-        el("p", { text: "Client signature" }),
-        v.clientName ? el("p", { class: "sig-name", text: v.clientName }) : null),
+        el("p", { text: "Client signature" })),
       el("div", { class: "sig" }, el("div", { class: "sig-line" }),
         el("p", { text: "For Martha's Cuisines" }))),
     el("p", { class: "thanks", text: "Thank you for choosing Martha's Cuisines." }),
@@ -504,9 +511,36 @@ function update() {
 }
 
 // ---------- save and load ----------
+// A paid invoice is a finished record: it can be viewed, printed and sent, but not changed.
+// The server refuses changes too (src/app.js), so this is only about not offering what cannot be done.
+const isLocked = () => state.status === "paid";
+function applyLock() {
+  const locked = isLocked();
+  form.classList.toggle("is-locked", locked);
+  form.querySelectorAll("fieldset").forEach((fs) => { fs.disabled = locked; });
+  saveBtn.hidden = locked;
+  const note = document.querySelector("#locked-note");
+  note.hidden = !locked;
+  const k = methodKey(state.paymentMethod);
+  note.textContent = locked ? `Paid${k ? ` (${METHODS[k]})` : ""}. This invoice is locked and can no longer be changed.` : "";
+}
+
 function showView(view) {
   appEl.dataset.view = view;
-  viewButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+  const toggle = document.querySelector("#preview-toggle");
+  const previewTitle = document.querySelector("#preview-page-title");
+  const newInvoiceLink = document.querySelector('.nav-menu a[href="/"]');
+  const isPreview = view === "preview";
+  if (toggle) {
+    toggle.classList.toggle("active", isPreview);
+    toggle.textContent = !isPreview ? "Preview Invoice" : isLocked() ? "Invoice Details" : "Edit Invoice";
+  }
+  if (previewTitle) previewTitle.hidden = !isPreview;
+  if (newInvoiceLink) {
+    newInvoiceLink.classList.toggle("current", !isPreview);
+    if (!isPreview) newInvoiceLink.setAttribute("aria-current", "page");
+    else newInvoiceLink.removeAttribute("aria-current");
+  }
 }
 
 // Marks every problem that stops the invoice from being saved or printed. Returns the first box to focus, or null.
@@ -530,6 +564,7 @@ function checkReady(action) {
 }
 
 async function save() {
+  if (isLocked()) return;
   notices.textContent = "";
   const check = checkReady("saving");
   if (check.first) {
@@ -573,7 +608,10 @@ function fillForm(inv) {
   resetDraft();
   renderItems();
   state.id = inv.id; state.number = inv.number; state.status = inv.status;
+  state.paymentMethod = methodKey(inv.paymentMethod ?? inv.payment_method) || "";
   document.querySelector("#form-title").textContent = "Invoice " + inv.number;
+  applyLock();
+  if (isLocked()) showView("preview"); // on a phone, open straight on the finished invoice
 }
 
 // ---------- print / save as PDF ----------
@@ -619,12 +657,28 @@ whatsappBtn.addEventListener("click", () => {
 });
 
 // ---------- phone layout: one pane at a time ----------
-const appEl = document.querySelector(".app");
-const viewButtons = document.querySelectorAll(".view-switch button");
-viewButtons.forEach((btn) => btn.addEventListener("click", () => {
-  showView(btn.dataset.view);
+const previewToggle = document.querySelector("#preview-toggle");
+
+previewToggle.addEventListener("click", async () => {
+  const isPreview = appEl.dataset.view === "preview";
+  const newView = isPreview ? "edit" : "preview";
+  
+  // If switching away from edit view with unsaved changes, confirm first
+  if (dirty && appEl.dataset.view === "edit" && newView === "preview") {
+    const yes = await confirmDialog({
+      title: "Unsaved changes",
+      message: "You have unsaved changes. If you switch now, you may lose your work. Continue anyway?",
+      confirmLabel: "Switch anyway",
+      cancelLabel: "Stay here",
+    });
+    if (!yes) return;
+  }
+  showView(newView);
   window.scrollTo(0, 0);
-}));
+});
+
+// Initialize the preview toggle button text
+showView(appEl.dataset.view || "edit");
 
 // ---------- keyboard: Enter moves on, or adds the item ----------
 const fillable = () => [...form.querySelectorAll("input:not([type=checkbox]), select, textarea")]
@@ -679,3 +733,8 @@ if (editId) {
 } else if (window.matchMedia("(pointer: fine)").matches) {
   f.clientName.focus(); // on a phone this would pop the keyboard open, so only on a computer
 }
+
+wireNavMenu();
+
+// Scroll to top on page load
+window.scrollTo(0, 0);

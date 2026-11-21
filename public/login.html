@@ -17,9 +17,9 @@
     <h1 class="login-title">Invoices</h1>
     <form id="login-form" novalidate>
       <div class="field">
-        <label for="password">Password</label>
-        <input id="password" type="password" name="password" autocomplete="current-password" aria-describedby="err-password" autofocus>
-        <p id="err-password" class="field-error" role="alert"></p>
+        <label for="pin">PIN</label>
+        <input id="pin" type="password" name="pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" aria-describedby="err-pin" autofocus>
+        <p id="err-pin" class="field-error" role="alert"></p>
       </div>
       <button type="submit">Log in</button>
     </form>
